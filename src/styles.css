@@ -64,3 +64,70 @@ footer { min-height: 110px; padding: 30px max(5vw, 28px); display: flex; align-i
 @media (max-width: 960px) { .tribe-grid { grid-template-columns: repeat(3, 1fr); }.hero, .tribes-hero { gap: 28px; }.how-it-works { gap: 12px; }.header-status { display: none; } }
 @media (max-width: 760px) { header { height: 68px; padding: 0 20px; }.menu-button { display: block; }nav { display: none; position: absolute; top: 67px; left: 0; right: 0; height: auto; background: #faf9f4; padding: 10px 20px; border-bottom: 1px solid #deddd4; }nav.open { display: grid; }nav button { min-height: 46px; border: 0; border-radius: 8px; }nav button.active { background: #e7eee4; }main { padding: 0 16px 60px; }.hero, .tribes-hero { grid-template-columns: 1fr; padding: 55px 0 30px; }.hero-illustration { display: none; }.stats-row { grid-template-columns: 1fr; margin-top: 0; }.panel-header { align-items: flex-start; padding: 22px; }.panel-header .button { padding: 10px; font-size: 0; }.panel-header .button svg { margin: 0; }.toolbar { padding: 12px 20px; }.next-banner { align-items: flex-start; gap: 16px; }.next-banner > div > span { display: none; }.next-banner .button { flex: 0 0 auto; font-size: 0; }.next-banner .button svg { margin: 0; }.balance-preview { justify-self: stretch; }.how-it-works { align-items: flex-start; justify-content: flex-start; overflow-x: auto; }.step { flex: 0 0 150px; }.tribe-grid { grid-template-columns: repeat(2, 1fr); }.result-legend { display: none; }footer { display: grid; gap: 12px; }footer > small { margin: 0; }.form-grid { grid-template-columns: 1fr; }.modal { padding: 21px; }.skills-title span { display: none; }.skill-row { align-items: flex-start; gap: 10px; flex-direction: column; }.rating { width: 100%; }.rating button { flex: 1; }.hero-actions { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 460px) { h1 { font-size: 41px; }.tribe-grid { grid-template-columns: 1fr; }.tribe-card { min-height: 165px; }.empty-state > div { flex-direction: column; }.balance-preview { min-height: 190px; gap: 18px; padding: 18px; }.balance-ring { width: 98px; height: 98px; }.modal-backdrop { padding: 10px; }.modal { max-height: calc(100vh - 20px); }.team-members .member-skill-dots { display: none; } }
+
+/* Identidad La Llanada */
+header { height: 82px; }
+.brand > span.brand-content:last-child, .brand-content { display: flex; align-items: center; gap: 11px; line-height: .92; }
+.brand-logo { width: 88px; height: 54px; object-fit: contain; mix-blend-mode: multiply; }
+.brand-title { display: grid; text-align: left; }
+.brand-title strong { font-size: 13px; letter-spacing: .1em; white-space: nowrap; }
+.brand-title small { font-size: 10px; letter-spacing: .32em; margin-top: 6px; color: #70837d; }
+.footer-brand-content .brand-logo { width: 72px; height: 45px; }
+.footer-brand-content .brand-title strong { font-size: 11px; }
+
+/* Carga masiva */
+.button.compact { padding: 9px 12px; font-size: 12px; flex: 0 0 auto; }
+.import-block { padding: 18px 30px; border-bottom: 1px solid #ecebe4; background: #fbfbf8; }
+.drop-zone { min-height: 76px; padding: 14px 16px; border: 1.5px dashed #bfcbbf; border-radius: 13px; display: flex; align-items: center; gap: 13px; background: #fff; transition: border-color .15s, background .15s, transform .15s; cursor: pointer; }
+.drop-zone.dragging { border-color: #438065; background: #edf5ec; transform: translateY(-1px); }
+.drop-zone input { display: none; }
+.drop-zone > span:nth-of-type(2) { display: grid; flex: 1; }
+.drop-zone strong { font-size: 13px; }
+.drop-zone small { color: #87938d; margin-top: 3px; font-size: 11px; }
+.drop-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: #e4eee2; color: #3e775e; flex: 0 0 auto; }
+.paper-note { margin-top: 10px; display: flex; align-items: center; gap: 8px; color: #78867f; font-size: 11px; }
+.paper-note svg { color: #ba832a; flex: 0 0 auto; }
+.paper-note strong { color: #596c64; }
+.import-notice { margin-top: 11px; padding: 9px 11px; border-radius: 9px; display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
+.import-notice.success { background: #e4f1e6; color: #286445; }
+.import-notice.warning { background: #fbefd7; color: #815e1f; }
+.import-notice.error { background: #f9e5e1; color: #9b4335; }
+.import-notice button { border: 0; background: transparent; color: currentColor; padding: 0; }
+
+/* Pesos y personalización de tribus */
+.weights-panel { margin: -18px 0 18px; padding: 16px 18px; border: 1px solid #dedfd8; background: #fff; border-radius: 15px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 7px 22px; }
+.weights-panel > div:first-child { display: grid; }
+.weights-panel > div:first-child > strong { margin-top: 4px; }
+.weights-panel > small { grid-column: 2; color: #8a9690; font-size: 10px; }
+.weight-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.weight-chips span { background: #f0f3eb; color: #617168; border-radius: 18px; padding: 6px 9px; font-size: 10px; }
+.weight-chips b { color: var(--green); margin-left: 3px; }
+.member-preview .mini-avatar[draggable="true"] { cursor: grab; }
+.member-preview .mini-avatar[draggable="true"]:active { cursor: grabbing; }
+.customize-hint { margin: -5px 0 17px; padding: 11px 13px; display: flex; gap: 9px; align-items: center; border-radius: 11px; color: #557067; background: #e8f1e5; font-size: 12px; }
+.customize-hint svg { color: #3b795c; flex: 0 0 auto; }
+.move-help { margin: -13px 0 16px; color: #7d8b85; font-size: 12px; line-height: 1.5; }
+.move-select { display: grid; gap: 3px; }
+.move-select span { color: #8c9892; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.move-select select { max-width: 150px; border: 1px solid #d9ddd6; border-radius: 8px; background: #fff; color: var(--green); padding: 7px; font: inherit; font-size: 11px; }
+
+@media (max-width: 760px) {
+  header { height: 72px; }
+  .brand-logo { width: 67px; height: 44px; }
+  .brand-title strong { font-size: 10px; }
+  .brand-title small { font-size: 8px; }
+  nav { top: 71px; }
+  .import-block { padding: 14px 20px; }
+  .drop-zone { align-items: flex-start; flex-wrap: wrap; }
+  .drop-zone > span:nth-of-type(2) { min-width: calc(100% - 60px); }
+  .drop-zone .button { margin-left: 55px; }
+  .weights-panel { grid-template-columns: 1fr; }
+  .weights-panel > small { grid-column: 1; }
+}
+
+@media (max-width: 460px) {
+  .brand-title { display: none; }
+  .team-members > div { align-items: flex-start; flex-wrap: wrap; }
+  .move-select { width: 100%; margin-left: 45px; }
+  .move-select select { max-width: none; width: 100%; }
+}

@@ -1,7 +1,9 @@
-import { SKILLS, TRIBES } from './data.js'
+import { BALANCE_DIMENSIONS, SKILLS, TRIBES } from './data.js'
 
-const camperVector = (camper) => [camper.age, ...SKILLS.map(({ key }) => camper[key])]
+const camperVector = (camper) => BALANCE_DIMENSIONS.map(({ key }) => camper[key])
 const sum = (values) => values.reduce((total, value) => total + value, 0)
+const totalWeight = sum(BALANCE_DIMENSIONS.map(({ weight }) => weight))
+const normalizedWeights = BALANCE_DIMENSIONS.map(({ weight }) => weight / totalWeight)
 
 function shuffle(values) {
   const copy = [...values]
@@ -18,7 +20,7 @@ function evaluate(teams, globalAverage, ranges) {
     const averages = team.sums.map((value) => value / team.members.length)
     return score + averages.reduce((total, value, index) => {
       const deviation = (value - globalAverage[index]) / ranges[index]
-      return total + deviation ** 2
+      return total + normalizedWeights[index] * deviation ** 2
     }, 0)
   }, 0)
 }
@@ -45,7 +47,7 @@ export function balanceCampers(campers) {
     capacityOrder.slice(0, extra).forEach((index) => { capacities[index] += 1 })
     const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index] }))
     const order = campers
-      .map((camper, index) => ({ camper, vector: vectors[index], distance: sum(vectors[index].map((value, dimension) => ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.08 }))
+      .map((camper, index) => ({ camper, vector: vectors[index], distance: sum(vectors[index].map((value, dimension) => normalizedWeights[dimension] * ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.008 }))
       .sort((a, b) => b.distance - a.distance)
 
     order.forEach(({ camper, vector }) => {
@@ -55,7 +57,7 @@ export function balanceCampers(campers) {
       candidates.forEach((team) => {
         const projected = team.sums.map((value, index) => value + vector[index])
         const target = globalAverage.map((value) => value * team.capacity)
-        const mismatch = sum(projected.map((value, index) => ((value - target[index]) / (ranges[index] * team.capacity)) ** 2))
+        const mismatch = sum(projected.map((value, index) => normalizedWeights[index] * ((value - target[index]) / (ranges[index] * team.capacity)) ** 2))
         const fillBonus = team.members.length / Math.max(team.capacity, 1) * 0.018
         const cost = mismatch + fillBonus + Math.random() * 0.001
         if (cost < chosenCost) { chosen = team; chosenCost = cost }
@@ -73,13 +75,13 @@ export function balanceCampers(campers) {
 
 export function getBalanceScore(teams, campers) {
   if (!campers.length || !teams.some((team) => team.members.length)) return 0
-  const dimensions = ['age', ...SKILLS.map(({ key }) => key)]
-  const deviations = dimensions.flatMap((key) => {
+  const deviations = BALANCE_DIMENSIONS.map(({ key }, index) => {
     const global = sum(campers.map((camper) => camper[key])) / campers.length
     const range = key === 'age' ? Math.max(...campers.map((camper) => camper.age)) - Math.min(...campers.map((camper) => camper.age)) || 1 : 4
-    return teams.filter((team) => team.members.length).map((team) => Math.abs(sum(team.members.map((member) => member[key])) / team.members.length - global) / range)
+    const teamDeviation = teams.filter((team) => team.members.length).map((team) => Math.abs(sum(team.members.map((member) => member[key])) / team.members.length - global) / range)
+    return (sum(teamDeviation) / Math.max(teamDeviation.length, 1)) * normalizedWeights[index]
   })
-  return Math.max(0, Math.round(100 - (sum(deviations) / deviations.length) * 100))
+  return Math.max(0, Math.round(100 - sum(deviations) * 100))
 }
 
 export function teamAverages(members) {

@@ -1,6 +1,8 @@
-# Tribu Camp · Tryouts
+# Formación de Tribus · La Llanada
 
-Primera versión de la aplicación para registrar las aptitudes de campistas y distribuirlos equitativamente entre 16 tribus.
+Aplicación para registrar las aptitudes de campistas, distribuirlos equitativamente entre 16 tribus y personalizar la distribución final.
+
+La carga masiva acepta archivos CSV con las columnas `Nombre`, `Edad`, `Fuerza`, `Velocidad`, `Inteligencia`, `Creatividad` y `Liderazgo`. Las calificaciones deben ser enteros del 1 al 5. Las hojas impresas pueden transcribirse después de la evaluación; los escaneos manuscritos no se procesan automáticamente para evitar errores de lectura.
 
 ## Desarrollo
 

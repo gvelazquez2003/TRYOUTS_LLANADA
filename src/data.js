@@ -1,9 +1,20 @@
 export const SKILLS = [
   { key: 'strength', label: 'Fuerza', icon: '💪' },
   { key: 'speed', label: 'Velocidad', icon: '⚡' },
-  { key: 'wit', label: 'Ingenio', icon: '🧠' },
+  { key: 'wit', label: 'Inteligencia', icon: '🧠' },
   { key: 'creativity', label: 'Creatividad', icon: '✨' },
   { key: 'leadership', label: 'Liderazgo', icon: '🏅' },
+]
+
+// Las prioridades indicadas suman 105. El algoritmo las normaliza para
+// conservar exactamente la proporción solicitada sin perder ninguna categoría.
+export const BALANCE_DIMENSIONS = [
+  { key: 'age', label: 'Edad', weight: 25 },
+  { key: 'speed', label: 'Velocidad', weight: 25 },
+  { key: 'leadership', label: 'Liderazgo', weight: 20 },
+  { key: 'strength', label: 'Fuerza', weight: 15 },
+  { key: 'creativity', label: 'Creatividad', weight: 10 },
+  { key: 'wit', label: 'Inteligencia', weight: 10 },
 ]
 
 export const TRIBES = [
