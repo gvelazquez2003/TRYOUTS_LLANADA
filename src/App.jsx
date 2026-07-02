@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Plus, RefreshCw, Search, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Download, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Plus, RefreshCw, Search, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
 import { balanceCampers, getBalanceScore, teamAverages } from './balance'
 import { BALANCE_DIMENSIONS, DEMO_CAMPERS, SKILLS, TRIBES } from './data'
 import { parseCampersFile } from './importers'
@@ -7,16 +7,78 @@ import llanadaLogo from './assets/lllg-logo.png'
 
 const STORAGE_KEY = 'tribu-camp-campers-v1'
 const TEAMS_STORAGE_KEY = 'formacion-tribus-teams-v1'
-const emptyForm = { name: '', age: '', ...Object.fromEntries(SKILLS.map(({ key }) => [key, 3])) }
+const emptyForm = { name: '', age: '', cabin: '', ...Object.fromEntries(SKILLS.map(({ key }) => [key, 3])) }
 const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camper[key], 0) / SKILLS.length
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
 const reconcileAssignments = (current, campers) => {
+  if (!campers.length) return null
   if (!Array.isArray(current)) return null
   const validIds = new Set(campers.map(({ id }) => id))
   const next = TRIBES.map((_, index) => (Array.isArray(current[index]) ? current[index] : []).filter((id) => validIds.has(id)))
   const assigned = new Set(next.flat())
   campers.filter(({ id }) => !assigned.has(id)).forEach(({ id }) => { const smallest = next.reduce((best, team, index) => team.length < next[best].length ? index : best, 0); next[smallest].push(id) })
   return next
+}
+
+const escapeHtml = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;')
+
+const fileSafe = (value) => String(value || 'tribu')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '')
+
+function downloadTribeSheet(team) {
+  const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
+  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(team.name)} · Formación de Tribus</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #173f35; margin: 32px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid ${team.color}; padding-bottom: 16px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 34px; }
+    .meta { text-align: right; color: #617168; font-size: 13px; }
+    .flag { font-size: 42px; margin-right: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    th { text-align: left; background: #edf3e9; color: #173f35; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    th, td { border: 1px solid #d9dfd6; padding: 11px 12px; }
+    td:first-child { width: 48px; text-align: center; color: #617168; }
+    .call-note { margin-top: 22px; border: 1px dashed #b9c4b8; border-radius: 10px; padding: 14px; color: #52645d; }
+    @media print { body { margin: 20mm; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:18px;padding:10px 14px;border:0;border-radius:8px;background:#173f35;color:white;font-weight:700;">Imprimir hoja</button>
+  <header>
+    <div><h1><span class="flag">${escapeHtml(team.flag)}</span>${escapeHtml(team.name)}</h1><p>Lista para reunir a los campistas de esta tribu.</p></div>
+    <div class="meta"><strong>Formación de Tribus</strong><br />${team.members.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
+  </header>
+  <table>
+    <thead><tr><th>#</th><th>Nombre</th><th>Edad</th><th>Cabaña</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
+  </table>
+  <div class="call-note"><strong>Nota para staff:</strong> llama a cada campista, verifica su cabaña y marca asistencia antes de iniciar la actividad.</div>
+</body>
+</html>`
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `tribu-${fileSafe(team.name)}.html`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function Brand({ footer = false }) {
@@ -37,19 +99,20 @@ function Modal({ children, onClose }) {
 }
 
 function CamperForm({ camper, onSave, onClose }) {
-  const [form, setForm] = useState(camper || emptyForm)
+  const [form, setForm] = useState({ ...emptyForm, ...(camper || {}) })
   const [error, setError] = useState('')
   const submit = (event) => {
     event.preventDefault()
     const name = form.name.trim()
+    const cabin = form.cabin.trim().toUpperCase()
     const age = Number(form.age)
     if (name.length < 2) return setError('Escribe el nombre completo del campista.')
     if (!Number.isInteger(age) || age < 5 || age > 20) return setError('La edad debe estar entre 5 y 20 años.')
-    onSave({ ...form, name, age })
+    onSave({ ...form, name, age, cabin })
   }
   return <form onSubmit={submit}>
     <div className="modal-heading"><div><span className="eyebrow">Ficha de evaluación</span><h2>{camper ? 'Editar campista' : 'Nuevo campista'}</h2><p>Registra sus datos y califica cada aptitud.</p></div><button className="icon-button" type="button" onClick={onClose}><X size={20} /></button></div>
-    <div className="form-grid"><label className="field field-wide"><span>Nombre y apellido</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. Sofía Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>años</small></div></label></div>
+    <div className="form-grid camper-form-grid"><label className="field field-wide"><span>Nombre y apellido</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. Sofía Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>años</small></div></label><label className="field"><span>Cabaña</span><input value={form.cabin} onChange={(event) => setForm({ ...form, cabin: event.target.value })} placeholder="Ej. S12" /></label></div>
     <div className="skills-form"><div className="skills-title"><strong>Aptitudes</strong><span>1 = inicial · 5 = sobresaliente</span></div>{SKILLS.map(({ key, label, icon }) => <div className="skill-row" key={key}><div className="skill-name"><span>{icon}</span><strong>{label}</strong></div><Rating label={label} value={form[key]} onChange={(value) => setForm({ ...form, [key]: value })} /></div>)}</div>
     {error && <p className="form-error">{error}</p>}
     <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" type="submit"><Check size={18} /> {camper ? 'Guardar cambios' : 'Agregar campista'}</button></div>
@@ -82,7 +145,7 @@ function ImportZone({ onImport }) {
   return <div className="import-block">
     <label className={`drop-zone ${dragging ? 'dragging' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); load(event.dataTransfer.files[0]) }}>
       <input type="file" accept=".csv,.txt,.pdf,.xlsx" onChange={(event) => { load(event.target.files[0]); event.target.value = '' }} />
-      <span className="drop-icon"><UploadCloud size={23} /></span><span><strong>Arrastra aquí la lista de campistas</strong><small>CSV con Nombre, Edad, Fuerza, Velocidad, Inteligencia, Creatividad y Liderazgo</small></span><span className="button secondary compact"><FileSpreadsheet size={16} /> Elegir archivo</span>
+      <span className="drop-icon"><UploadCloud size={23} /></span><span><strong>Arrastra aquí la lista de campistas</strong><small>CSV con Nombre, Edad, Cabaña, Fuerza, Velocidad, Inteligencia, Creatividad y Liderazgo</small></span><span className="button secondary compact"><FileSpreadsheet size={16} /> Elegir archivo</span>
     </label>
     <div className="paper-note"><AlertTriangle size={17} /><span><strong>¿Usan la hoja impresa?</strong> Sí. Los evaluadores pueden llenarla en papel; después se transcribe o se carga el CSV. No es obligatorio usar el teléfono.</span></div>
     {notice && <div className={`import-notice ${notice.type}`}><span>{notice.text}</span><button onClick={() => setNotice(null)} aria-label="Cerrar"><X size={15} /></button></div>}
@@ -93,26 +156,29 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
   const [editing, setEditing] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const filtered = campers.filter(({ name }) => name.toLowerCase().includes(query.toLowerCase()))
+  const filtered = campers.filter(({ name, cabin = '' }) => `${name} ${cabin}`.toLowerCase().includes(query.toLowerCase()))
   const save = (camper) => {
     if (editing) setCampers((items) => items.map((item) => item.id === editing.id ? { ...camper, id: item.id } : item))
     else setCampers((items) => [...items, { ...camper, id: crypto.randomUUID() }])
     setModalOpen(false); setEditing(null)
   }
   const importCampers = (incoming) => {
-    const known = new Set(campers.map(({ name, age }) => `${name.trim().toLowerCase()}|${age}`))
-    const unique = incoming.filter(({ name, age }) => { const key = `${name.trim().toLowerCase()}|${age}`; if (known.has(key)) return false; known.add(key); return true })
+    const known = new Set(campers.map(({ name, age, cabin = '' }) => `${name.trim().toLowerCase()}|${age}|${cabin.trim().toLowerCase()}`))
+    const unique = incoming.filter(({ name, age, cabin = '' }) => { const key = `${name.trim().toLowerCase()}|${age}|${cabin.trim().toLowerCase()}`; if (known.has(key)) return false; known.add(key); return true })
     setCampers((items) => [...items, ...unique.map((camper) => ({ ...camper, id: crypto.randomUUID() }))])
     return { added: unique.length, duplicates: incoming.length - unique.length }
   }
-  const addDemo = () => setCampers(DEMO_CAMPERS.map(([name, age, strength, speed, wit, creativity, leadership]) => ({ id: crypto.randomUUID(), name, age, strength, speed, wit, creativity, leadership })))
+  const addDemo = () => setCampers(DEMO_CAMPERS.map(([name, age, strength, speed, wit, creativity, leadership], index) => ({ id: crypto.randomUUID(), name, age, cabin: `${index % 2 ? 'K' : 'S'}${(index % 12) + 1}`, strength, speed, wit, creativity, leadership })))
+  const deleteAll = () => {
+    if (window.confirm('¿Seguro que quieres eliminar TODOS los registros de campistas? Esta acción también limpia la distribución actual de tribus.')) setCampers([])
+  }
 
   return <>
     <section className="hero"><div><span className="eyebrow"><Sparkles size={14} /> Módulo de evaluación</span><h1>Conoce el talento de<br /><em>cada campista.</em></h1><p>Registra sus aptitudes para construir tribus más justas, diversas y equilibradas.</p></div><div className="hero-illustration" aria-hidden="true"><div className="sun" /><div className="mountain mountain-one" /><div className="mountain mountain-two" /><div className="flag">★</div><div className="trees">♠ ♠ ♠</div></div></section>
     <section className="stats-row"><article><span className="stat-icon green"><Users /></span><div><strong>{campers.length}</strong><small>Campistas registrados</small></div></article><article><span className="stat-icon gold"><BarChart3 /></span><div><strong>{campers.length ? (campers.reduce((total, camper) => total + camperAverage(camper), 0) / campers.length).toFixed(1) : '—'}</strong><small>Promedio de aptitudes</small></div></article><article><span className="stat-icon coral"><Trophy /></span><div><strong>16</strong><small>Tribus disponibles</small></div></article></section>
-    <section className="panel roster-panel"><div className="panel-header"><div><span className="eyebrow">Base de campistas</span><h2>Participantes</h2><p>Administra las fichas antes de hacer la división.</p></div><button className="button primary" onClick={() => { setEditing(null); setModalOpen(true) }}><Plus size={18} /> Agregar campista</button></div>
+    <section className="panel roster-panel"><div className="panel-header"><div><span className="eyebrow">Base de campistas</span><h2>Participantes</h2><p>Administra las fichas antes de hacer la división.</p></div><div className="panel-actions">{campers.length > 0 && <button className="button danger-action" onClick={deleteAll}><Trash2 size={18} /> Eliminar todos</button>}<button className="button primary" onClick={() => { setEditing(null); setModalOpen(true) }}><Plus size={18} /> Agregar campista</button></div></div>
       <ImportZone onImport={importCampers} />
-      {campers.length ? <><div className="toolbar"><div className="search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar campista..." /></div><span>{filtered.length} de {campers.length}</span></div><div className="table-wrap"><table><thead><tr><th>Campista</th><th>Edad</th>{SKILLS.map(({ key, label }) => <th key={key}>{label}</th>)}<th>Prom.</th><th /></tr></thead><tbody>{filtered.map((camper) => <tr key={camper.id}><td><span className="avatar">{initials(camper.name)}</span><strong>{camper.name}</strong></td><td>{camper.age} años</td>{SKILLS.map(({ key }) => <td key={key}><span className={`score score-${camper[key]}`}>{camper[key]}</span></td>)}<td><strong>{camperAverage(camper).toFixed(1)}</strong></td><td><div className="row-actions"><button onClick={() => { setEditing(camper); setModalOpen(true) }} title="Editar"><Edit3 size={17} /></button><button className="danger" onClick={() => setCampers((items) => items.filter(({ id }) => id !== camper.id))} title="Eliminar"><Trash2 size={17} /></button></div></td></tr>)}</tbody></table></div></> : <div className="empty-state"><span><UserPlus size={34} /></span><h3>Tu lista está esperando aventureros</h3><p>Agrega el primer campista, arrastra un CSV o carga un grupo de ejemplo.</p><div><button className="button primary" onClick={() => setModalOpen(true)}><Plus size={18} /> Agregar campista</button><button className="button secondary" onClick={addDemo}>Cargar datos de prueba</button></div></div>}
+      {campers.length ? <><div className="toolbar"><div className="search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar campista o cabaña..." /></div><span>{filtered.length} de {campers.length}</span></div><div className="table-wrap"><table><thead><tr><th>Campista</th><th>Edad</th><th>Cabaña</th>{SKILLS.map(({ key, label }) => <th key={key}>{label}</th>)}<th>Prom.</th><th /></tr></thead><tbody>{filtered.map((camper) => <tr key={camper.id}><td><span className="avatar">{initials(camper.name)}</span><strong>{camper.name}</strong></td><td>{camper.age} años</td><td><span className="cabin-pill">{camper.cabin || '—'}</span></td>{SKILLS.map(({ key }) => <td key={key}><span className={`score score-${camper[key]}`}>{camper[key]}</span></td>)}<td><strong>{camperAverage(camper).toFixed(1)}</strong></td><td><div className="row-actions"><button onClick={() => { setEditing(camper); setModalOpen(true) }} title="Editar"><Edit3 size={17} /></button><button className="danger" onClick={() => setCampers((items) => items.filter(({ id }) => id !== camper.id))} title="Eliminar"><Trash2 size={17} /></button></div></td></tr>)}</tbody></table></div></> : <div className="empty-state"><span><UserPlus size={34} /></span><h3>Tu lista está esperando aventureros</h3><p>Agrega el primer campista, arrastra un CSV o carga un grupo de ejemplo.</p><div><button className="button primary" onClick={() => setModalOpen(true)}><Plus size={18} /> Agregar campista</button><button className="button secondary" onClick={addDemo}>Cargar datos de prueba</button></div></div>}
     </section>
     {campers.length > 0 && <div className="next-banner"><div><span><Sparkles size={22} /></span><div><strong>¿Todos listos?</strong><p>Cuando termines las evaluaciones, crea las 16 tribus equilibradas.</p></div></div><button className="button light" onClick={onGoTribes}>Ir a formar tribus <ArrowRight size={18} /></button></div>}
     {modalOpen && <Modal onClose={() => { setModalOpen(false); setEditing(null) }}><CamperForm camper={editing} onSave={save} onClose={() => { setModalOpen(false); setEditing(null) }} /></Modal>}
@@ -135,9 +201,9 @@ function Tribes({ campers, teams, generated, onGenerate, onMove }) {
     <section className="how-it-works"><span className="step"><b>1</b><span><strong>Leemos los perfiles</strong><small>Edad y aptitudes</small></span></span><ChevronRight /><span className="step"><b>2</b><span><strong>Aplicamos los pesos</strong><small>{BALANCE_DIMENSIONS.length} criterios</small></span></span><ChevronRight /><span className="step"><b>3</b><span><strong>Personalizas el resultado</strong><small>Cambios de último minuto</small></span></span></section>
     <section className="tribe-section"><div className="section-heading"><div><span className="eyebrow">Mapa de tribus</span><h2>{generated ? 'Distribución actual' : 'Las tribus del campamento'}</h2></div>{generated && <div className="result-legend"><span><i className="dot green-dot" /> Cambios manuales habilitados</span><span>Arrastra campistas entre tribus</span></div>}</div>
       {generated && <div className="customize-hint"><MoveRight size={18} /><span><strong>Esta distribución es editable.</strong> Abre una tribu para mover a un campista, o arrástralo directamente entre tarjetas.</span></div>}
-      <div className="tribe-grid">{teams.map((team, teamIndex) => { const averages = teamAverages(team.members); return <article className={`tribe-card ${generated ? 'generated' : ''}`} key={team.name} style={{ '--tribe': team.color }} onClick={() => generated && setSelectedIndex(teamIndex)} onDragOver={(event) => generated && event.preventDefault()} onDrop={(event) => dropMember(event, teamIndex)}><div className="tribe-accent" /><div className="tribe-top"><span className="flag-emoji">{team.flag}</span><span className="member-count"><Users size={14} /> {team.members.length}</span></div><h3>{team.name}</h3>{generated ? <><div className="member-preview">{team.members.slice(0, 3).map((member) => <span draggable onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData('text/camper-id', member.id); event.dataTransfer.setData('text/team-index', String(teamIndex)) }} className="mini-avatar" title={`${member.name} · arrastra para mover`} key={member.id}>{initials(member.name)}</span>)}{team.members.length > 3 && <span className="mini-avatar more">+{team.members.length - 3}</span>}{!team.members.length && <small>Suelta un campista aquí</small>}</div><div className="tribe-metrics"><span>Edad <strong>{averages.age ? averages.age.toFixed(1) : '—'}</strong></span><span>Aptitud <strong>{averages.skills ? averages.skills.toFixed(1) : '—'}</strong></span></div></> : <p>Esperando distribución</p>} {generated && <button>Editar tribu <ChevronRight size={15} /></button>}</article> })}</div>
+      <div className="tribe-grid">{teams.map((team, teamIndex) => { const averages = teamAverages(team.members); return <article className={`tribe-card ${generated ? 'generated' : ''}`} key={team.name} style={{ '--tribe': team.color }} onClick={() => generated && setSelectedIndex(teamIndex)} onDragOver={(event) => generated && event.preventDefault()} onDrop={(event) => dropMember(event, teamIndex)}><div className="tribe-accent" /><div className="tribe-top"><span className="flag-emoji">{team.flag}</span><span className="member-count"><Users size={14} /> {team.members.length}</span></div><h3>{team.name}</h3>{generated ? <><div className="member-preview">{team.members.slice(0, 3).map((member) => <span draggable onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData('text/camper-id', member.id); event.dataTransfer.setData('text/team-index', String(teamIndex)) }} className="mini-avatar" title={`${member.name} · arrastra para mover`} key={member.id}>{initials(member.name)}</span>)}{team.members.length > 3 && <span className="mini-avatar more">+{team.members.length - 3}</span>}{!team.members.length && <small>Suelta un campista aquí</small>}</div><div className="tribe-metrics"><span>Edad <strong>{averages.age ? averages.age.toFixed(1) : '—'}</strong></span><span>Aptitud <strong>{averages.skills ? averages.skills.toFixed(1) : '—'}</strong></span></div></> : <p>Esperando distribución</p>} {generated && <div className="tribe-actions"><button type="button" onClick={(event) => { event.stopPropagation(); setSelectedIndex(teamIndex) }}>Editar <ChevronRight size={15} /></button><button type="button" disabled={!team.members.length} onClick={(event) => { event.stopPropagation(); downloadTribeSheet(team) }}><Download size={14} /> Hoja</button></div>}</article> })}</div>
     </section>
-    {selected && <Modal onClose={() => setSelectedIndex(null)}><div className="modal-heading team-modal-title"><div><span className="flag-emoji large">{selected.flag}</span><div><span className="eyebrow">Personalizar tribu</span><h2>{selected.name}</h2></div></div><button className="icon-button" onClick={() => setSelectedIndex(null)}><X size={20} /></button></div><p className="move-help">Selecciona otra tribu para mover a un campista. Los cambios se guardan automáticamente en este dispositivo.</p><div className="team-members">{selected.members.length ? selected.members.map((member) => <div key={member.id}><span className="avatar">{initials(member.name)}</span><div><strong>{member.name}</strong><small>{member.age} años · Promedio {camperAverage(member).toFixed(1)}</small></div><label className="move-select"><span>Mover a</span><select value={selectedIndex} onChange={(event) => onMove(member.id, selectedIndex, Number(event.target.value))}>{teams.map((team, index) => <option key={team.name} value={index}>{team.flag} {team.name}</option>)}</select></label></div>) : <div className="empty-mini">Esta tribu está vacía. Puedes arrastrar integrantes hasta su tarjeta.</div>}</div></Modal>}
+    {selected && <Modal onClose={() => setSelectedIndex(null)}><div className="modal-heading team-modal-title"><div><span className="flag-emoji large">{selected.flag}</span><div><span className="eyebrow">Personalizar tribu</span><h2>{selected.name}</h2></div></div><div className="modal-heading-actions"><button className="button secondary compact" disabled={!selected.members.length} onClick={() => downloadTribeSheet(selected)}><Download size={16} /> Descargar hoja</button><button className="icon-button" onClick={() => setSelectedIndex(null)}><X size={20} /></button></div></div><p className="move-help">Selecciona otra tribu para mover a un campista. Los cambios se guardan automáticamente en este dispositivo.</p><div className="team-members">{selected.members.length ? selected.members.map((member) => <div key={member.id}><span className="avatar">{initials(member.name)}</span><div><strong>{member.name}</strong><small>{member.age} años · Cabaña {member.cabin || '—'} · Promedio {camperAverage(member).toFixed(1)}</small></div><label className="move-select"><span>Mover a</span><select value={selectedIndex} onChange={(event) => onMove(member.id, selectedIndex, Number(event.target.value))}>{teams.map((team, index) => <option key={team.name} value={index}>{team.flag} {team.name}</option>)}</select></label></div>) : <div className="empty-mini">Esta tribu está vacía. Puedes arrastrar integrantes hasta su tarjeta.</div>}</div></Modal>}
   </>
 }
 
