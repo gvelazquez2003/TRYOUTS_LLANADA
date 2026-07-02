@@ -77,7 +77,7 @@ export function getBalanceScore(teams, campers) {
   if (!campers.length || !teams.some((team) => team.members.length)) return 0
   const deviations = BALANCE_DIMENSIONS.map(({ key }, index) => {
     const global = sum(campers.map((camper) => camper[key])) / campers.length
-    const range = key === 'age' ? Math.max(...campers.map((camper) => camper.age)) - Math.min(...campers.map((camper) => camper.age)) || 1 : 4
+    const range = key === 'age' ? Math.max(...campers.map((camper) => camper.age)) - Math.min(...campers.map((camper) => camper.age)) || 1 : 5
     const teamDeviation = teams.filter((team) => team.members.length).map((team) => Math.abs(sum(team.members.map((member) => member[key])) / team.members.length - global) / range)
     return (sum(teamDeviation) / Math.max(teamDeviation.length, 1)) * normalizedWeights[index]
   })

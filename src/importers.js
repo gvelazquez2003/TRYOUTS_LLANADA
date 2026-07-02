@@ -5,9 +5,10 @@ const normalize = (value) => String(value || '')
   .replace(/[^a-z0-9]/g, '')
 
 const aliases = {
-  name: ['nombre', 'nombreyapellido', 'nombresyapellidos', 'campista', 'participante'],
+  name: ['nombre', 'nombres', 'nombreyapellido', 'nombresyapellidos', 'campista', 'participante'],
+  lastName: ['apellido', 'apellidos'],
   age: ['edad', 'anos'],
-  cabin: ['cabana', 'cabanaid', 'cabin', 'cabanas', 'cabinas'],
+  cabin: ['cabana', 'cabaa', 'cabanaid', 'cabin', 'cabanas', 'cabinas'],
   strength: ['fuerza'],
   speed: ['velocidad'],
   wit: ['inteligencia', 'ingenio'],
@@ -45,23 +46,24 @@ export function parseCampersFile(text) {
 
   const headers = rows[0].map(normalize)
   const columns = Object.fromEntries(Object.entries(aliases).map(([key, options]) => [key, headers.findIndex((header) => options.includes(header))]))
-  const requiredColumns = ['name', 'age', 'strength', 'speed', 'wit', 'creativity', 'leadership']
+  const requiredColumns = ['name', 'lastName', 'age', 'strength', 'speed', 'wit', 'creativity', 'leadership']
   const missing = requiredColumns.filter((key) => columns[key] < 0)
-  if (missing.length) throw new Error('Faltan columnas. Usa: Nombre, Edad, Cabaña, Fuerza, Velocidad, Inteligencia, Creatividad y Liderazgo.')
+  if (missing.length) throw new Error('Faltan columnas. Usa: Nombre, Apellido, Edad, Cabaña, Fuerza, Velocidad, Inteligencia, Creatividad y Liderazgo.')
 
   const campers = []
   const errors = []
   rows.slice(1).forEach((row, rowIndex) => {
     const name = (row[columns.name] || '').trim()
     if (!name) return
+    const lastName = (row[columns.lastName] || '').trim()
     const cabin = columns.cabin >= 0 ? (row[columns.cabin] || '').trim() : ''
     const age = Number(row[columns.age])
     const scores = Object.fromEntries(['strength', 'speed', 'wit', 'creativity', 'leadership'].map((key) => [key, Number(row[columns[key]])]))
-    if (!Number.isInteger(age) || age < 5 || age > 20 || Object.values(scores).some((score) => !Number.isInteger(score) || score < 1 || score > 5)) {
-      errors.push(`Fila ${rowIndex + 2}: revisa la edad y las notas (deben ser enteros del 1 al 5).`)
+    if (lastName.length < 2 || !Number.isInteger(age) || age < 5 || age > 20 || Object.values(scores).some((score) => !Number.isInteger(score) || score < 0 || score > 5)) {
+      errors.push(`Fila ${rowIndex + 2}: revisa apellido, edad y notas (las notas deben ser enteros del 0 al 5).`)
       return
     }
-    campers.push({ name, age, cabin, ...scores })
+    campers.push({ name, lastName, age, cabin, ...scores })
   })
   return { campers, errors }
 }
