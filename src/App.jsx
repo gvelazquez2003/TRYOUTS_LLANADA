@@ -43,6 +43,20 @@ const fileSafe = (value) => String(value || 'tribu')
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-|-$/g, '')
 
+const textDecodeScore = (text) => (
+  (text.match(/\uFFFD/g) || []).length * 5 +
+  (text.match(/[ÃÂ]/g) || []).length
+)
+
+async function readCsvText(file) {
+  const buffer = await file.arrayBuffer()
+  const candidates = ['utf-8', 'windows-1252'].map((encoding) => ({
+    encoding,
+    text: new TextDecoder(encoding).decode(buffer),
+  }))
+  return candidates.sort((a, b) => textDecodeScore(a.text) - textDecodeScore(b.text))[0].text
+}
+
 function downloadTribeSheet(team) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
@@ -145,7 +159,7 @@ function ImportZone({ onImport }) {
       return
     }
     try {
-      const parsed = parseCampersFile(await file.text())
+      const parsed = parseCampersFile(await readCsvText(file))
       const errors = parsed.errors
       const { added, updated, duplicates } = onImport(parsed)
       const details = [errors.length ? `${errors.length} fila(s) con errores` : '', duplicates ? `${duplicates} duplicado(s)` : ''].filter(Boolean).join(' · ')

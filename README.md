@@ -8,6 +8,8 @@ Desde la tabla se pueden eliminar todos los campistas de una sola vez. Después 
 
 También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido` y actualiza esa ficha en vez de crear un duplicado.
 
+Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y tildes. La carga de CSV intenta leer correctamente archivos UTF-8 y Windows-1252/ANSI.
+
 ## Desarrollo
 
 ```bash
