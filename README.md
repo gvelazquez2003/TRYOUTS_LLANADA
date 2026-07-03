@@ -13,10 +13,52 @@ npm install
 npm run dev
 ```
 
+## Sincronización entre dispositivos
+
+Por defecto la app funciona en modo local para no depender de credenciales. Para que varias computadoras compartan campistas y cambios de tribus, configura Supabase y agrega estas variables de entorno:
+
+```env
+VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+VITE_SUPABASE_ANON_KEY=TU_ANON_KEY
+VITE_SYNC_ROOM=llanada-tryouts
+```
+
+En Supabase crea esta tabla:
+
+```sql
+create table if not exists public.tribe_app_state (
+  id text primary key,
+  campers jsonb not null default '[]'::jsonb,
+  assignments jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+
+alter table public.tribe_app_state enable row level security;
+
+create policy "Allow public sync reads"
+on public.tribe_app_state
+for select
+using (true);
+
+create policy "Allow public sync writes"
+on public.tribe_app_state
+for insert
+with check (true);
+
+create policy "Allow public sync updates"
+on public.tribe_app_state
+for update
+using (true)
+with check (true);
+```
+
+Cuando esas variables existen, la app sincroniza campistas y distribución de tribus entre dispositivos, con respaldo local en cada navegador. Si no existen, muestra “Solo este dispositivo” y usa `localStorage`.
+
 ## Producción
 
 ```bash
 npm run build
 ```
 
-La aplicación es un proyecto Vite estático compatible con Vercel. Los datos se guardan en `localStorage` del navegador; esta primera versión no requiere base de datos.
+La aplicación es un proyecto Vite estático compatible con Vercel. Sin variables de Supabase, los datos se guardan solo en `localStorage`; con Supabase, se sincronizan entre dispositivos.

@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Download, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Plus, RefreshCw, Search, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
 import { balanceCampers, getBalanceScore, teamAverages } from './balance'
 import { BALANCE_DIMENSIONS, DEMO_CAMPERS, SKILLS, TRIBES } from './data'
 import { parseCampersFile } from './importers'
+import { getDeviceId, isRemoteSyncConfigured, readLocalSnapshot, readRemoteSnapshot, saveLocalSnapshot, writeRemoteSnapshot } from './syncStore'
 import llanadaLogo from './assets/lllg-logo.png'
 
-const STORAGE_KEY = 'tribu-camp-campers-v1'
-const TEAMS_STORAGE_KEY = 'formacion-tribus-teams-v1'
 const emptyForm = { name: '', lastName: '', age: '', cabin: '', ...Object.fromEntries(SKILLS.map(({ key }) => [key, 3])) }
 const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camper[key], 0) / SKILLS.length
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
@@ -212,12 +211,106 @@ function Tribes({ campers, teams, generated, onGenerate, onMove }) {
 }
 
 export default function App() {
+  const [initialSnapshot] = useState(readLocalSnapshot)
   const [active, setActive] = useState('tryouts')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [campers, setCampers] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [] } catch { return [] } })
-  const [assignments, setAssignments] = useState(() => { try { return reconcileAssignments(JSON.parse(localStorage.getItem(TEAMS_STORAGE_KEY)), campers) } catch { return null } })
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(campers)) }, [campers])
-  useEffect(() => { if (assignments) localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(assignments)); else localStorage.removeItem(TEAMS_STORAGE_KEY) }, [assignments])
+  const [campers, setCampers] = useState(() => initialSnapshot.campers)
+  const [assignments, setAssignments] = useState(() => reconcileAssignments(initialSnapshot.assignments, initialSnapshot.campers))
+  const [syncStatus, setSyncStatus] = useState(() => isRemoteSyncConfigured() ? { mode: 'syncing', label: 'Conectando sync' } : { mode: 'local', label: 'Solo este dispositivo' })
+  const latestStateRef = useRef({ campers, assignments })
+  const applyingRemoteRef = useRef(false)
+  const syncReadyRef = useRef(false)
+  const lastRemoteUpdateRef = useRef(null)
+  const pendingRemoteSaveRef = useRef(false)
+
+  useEffect(() => {
+    latestStateRef.current = { campers, assignments }
+    saveLocalSnapshot({ campers, assignments })
+    if (isRemoteSyncConfigured() && syncReadyRef.current && !applyingRemoteRef.current) pendingRemoteSaveRef.current = true
+  }, [campers, assignments])
+
+  useEffect(() => {
+    if (!isRemoteSyncConfigured()) return undefined
+    let cancelled = false
+    let pollTimeout = null
+    const deviceId = getDeviceId()
+    const applyRemote = (remote) => {
+      const remoteCampers = remote.campers || []
+      applyingRemoteRef.current = true
+      pendingRemoteSaveRef.current = false
+      setCampers(remoteCampers)
+      setAssignments(reconcileAssignments(remote.assignments, remoteCampers))
+      window.setTimeout(() => { applyingRemoteRef.current = false }, 0)
+    }
+    const poll = async () => {
+      try {
+        const remote = await readRemoteSnapshot()
+        if (cancelled) return
+        if (remote?.updatedAt && remote.updatedAt !== lastRemoteUpdateRef.current) {
+          lastRemoteUpdateRef.current = remote.updatedAt
+          if (remote.updatedBy !== deviceId) applyRemote(remote)
+        }
+        if (!remote && !syncReadyRef.current) {
+          const saved = await writeRemoteSnapshot(latestStateRef.current)
+          lastRemoteUpdateRef.current = saved?.updatedAt || null
+        }
+        syncReadyRef.current = true
+        if (pendingRemoteSaveRef.current && !applyingRemoteRef.current) {
+          const saved = await writeRemoteSnapshot(latestStateRef.current)
+          lastRemoteUpdateRef.current = saved?.updatedAt || lastRemoteUpdateRef.current
+          pendingRemoteSaveRef.current = false
+        }
+        setSyncStatus({ mode: 'online', label: 'Sincronizado' })
+      } catch {
+        if (!cancelled) setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+      } finally {
+        if (!cancelled) pollTimeout = window.setTimeout(poll, 4000)
+      }
+    }
+    const boot = async () => {
+      setSyncStatus({ mode: 'syncing', label: 'Conectando sync' })
+      try {
+        const remote = await readRemoteSnapshot()
+        if (cancelled) return
+        if (remote) {
+          lastRemoteUpdateRef.current = remote.updatedAt
+          applyRemote(remote)
+        } else {
+          const saved = await writeRemoteSnapshot(latestStateRef.current)
+          lastRemoteUpdateRef.current = saved?.updatedAt || null
+        }
+        syncReadyRef.current = true
+        setSyncStatus({ mode: 'online', label: 'Sincronizado' })
+      } catch {
+        if (!cancelled) setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+      } finally {
+        if (!cancelled) pollTimeout = window.setTimeout(poll, 4000)
+      }
+    }
+    boot()
+    return () => {
+      cancelled = true
+      if (pollTimeout) window.clearTimeout(pollTimeout)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isRemoteSyncConfigured() || !syncReadyRef.current || applyingRemoteRef.current) return undefined
+    const timeout = window.setTimeout(async () => {
+      setSyncStatus({ mode: 'syncing', label: 'Guardando sync' })
+      try {
+        const saved = await writeRemoteSnapshot({ campers, assignments })
+        lastRemoteUpdateRef.current = saved?.updatedAt || lastRemoteUpdateRef.current
+        pendingRemoteSaveRef.current = false
+        setSyncStatus({ mode: 'online', label: 'Sincronizado' })
+      } catch {
+        pendingRemoteSaveRef.current = true
+        setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+      }
+    }, 650)
+    return () => window.clearTimeout(timeout)
+  }, [campers, assignments])
+
   const updateCampers = (updater) => {
     const next = typeof updater === 'function' ? updater(campers) : updater
     setCampers(next)
@@ -231,5 +324,5 @@ export default function App() {
     if (sourceIndex === targetIndex) return
     setAssignments((current) => current.map((ids, index) => index === sourceIndex ? ids.filter((id) => id !== memberId) : index === targetIndex ? [...ids, memberId] : ids))
   }
-  return <div className="app-shell"><header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header><main>{active === 'tryouts' ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} /> : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} />}</main><footer><span className="brand footer-brand"><Brand footer /></span><p>Equipos equilibrados. Experiencias inolvidables.</p><small>Los datos y los cambios de tribu se guardan en este dispositivo.</small></footer></div>
+  return <div className="app-shell"><header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><span className={`sync-pill ${syncStatus.mode}`} title={isRemoteSyncConfigured() ? 'Sincronización entre dispositivos activa si Supabase está configurado.' : 'Configura Supabase para compartir los datos entre dispositivos.'}><i />{syncStatus.label}</span><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header><main>{active === 'tryouts' ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} /> : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} />}</main><footer><span className="brand footer-brand"><Brand footer /></span><p>Equipos equilibrados. Experiencias inolvidables.</p><small>{isRemoteSyncConfigured() ? 'Los datos se sincronizan entre dispositivos y también quedan respaldados localmente.' : 'Modo local: configura Supabase para sincronizar datos entre dispositivos.'}</small></footer></div>
 }
