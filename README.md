@@ -23,6 +23,8 @@ VITE_SUPABASE_ANON_KEY=TU_ANON_KEY
 VITE_SYNC_ROOM=llanada-tryouts
 ```
 
+`VITE_SUPABASE_URL` puede ser la URL completa (`https://...supabase.co`) o solo el project ref. Evita pegar comillas o espacios extra en Vercel.
+
 En Supabase crea esta tabla:
 
 ```sql

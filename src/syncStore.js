@@ -1,5 +1,26 @@
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '')
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+function cleanEnv(value) {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '')
+}
+
+function projectRefFromKey(key) {
+  try {
+    const payload = JSON.parse(atob(key.split('.')[1]))
+    return payload.ref || ''
+  } catch {
+    return ''
+  }
+}
+
+function normalizeSupabaseUrl(value, key) {
+  const cleanValue = cleanEnv(value)
+  if (cleanValue.startsWith('http://') || cleanValue.startsWith('https://')) return cleanValue.replace(/\/$/, '')
+  if (/^[a-z0-9-]+$/i.test(cleanValue)) return `https://${cleanValue}.supabase.co`
+  const ref = projectRefFromKey(key)
+  return ref ? `https://${ref}.supabase.co` : ''
+}
+
+const SUPABASE_KEY = cleanEnv(import.meta.env.VITE_SUPABASE_ANON_KEY)
+const SUPABASE_URL = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL, SUPABASE_KEY)
 const SYNC_ROOM = import.meta.env.VITE_SYNC_ROOM || 'llanada-tryouts'
 const SYNC_TABLE = import.meta.env.VITE_SUPABASE_SYNC_TABLE || 'tribe_app_state'
 const DEVICE_KEY = 'formacion-tribus-device-id'
@@ -52,12 +73,17 @@ function syncUrl(query = '') {
   return `${SUPABASE_URL}/rest/v1/${SYNC_TABLE}${query}`
 }
 
+async function responseError(response, action) {
+  const details = await response.text()
+  return new Error(`${action} falló (${response.status}). ${details.slice(0, 220)}`)
+}
+
 export async function readRemoteSnapshot() {
   if (!isRemoteSyncConfigured()) return null
   const response = await fetch(syncUrl(`?id=eq.${encodeURIComponent(SYNC_ROOM)}&select=*`), {
     headers: syncHeaders(),
   })
-  if (!response.ok) throw new Error(`No se pudo leer la sincronización (${response.status}).`)
+  if (!response.ok) throw await responseError(response, 'Lectura de Supabase')
   const rows = await response.json()
   const row = rows[0]
   if (!row) return null
@@ -83,7 +109,7 @@ export async function writeRemoteSnapshot({ campers, assignments }) {
     headers: syncHeaders({ Prefer: 'resolution=merge-duplicates,return=representation' }),
     body: JSON.stringify(payload),
   })
-  if (!response.ok) throw new Error(`No se pudo guardar la sincronización (${response.status}).`)
+  if (!response.ok) throw await responseError(response, 'Guardado en Supabase')
   const rows = await response.json()
   const row = rows[0]
   return row ? { updatedAt: row.updated_at, updatedBy: row.updated_by } : null

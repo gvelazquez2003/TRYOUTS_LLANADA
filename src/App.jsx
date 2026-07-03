@@ -11,6 +11,13 @@ const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camp
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
 const fullName = (camper) => [camper.name, camper.lastName].filter(Boolean).join(' ')
 const identityKey = ({ name = '', lastName = '' }) => `${name.trim().toLowerCase()}|${lastName.trim().toLowerCase()}`
+const syncErrorStatus = (error) => {
+  const message = error?.message || ''
+  if (message.includes('(404)')) return { mode: 'error', label: 'Tabla sync no existe', detail: message }
+  if (message.includes('(401)') || message.includes('(403)')) return { mode: 'error', label: 'Revisa permisos sync', detail: message }
+  if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('url')) return { mode: 'error', label: 'Revisa URL sync', detail: message }
+  return { mode: 'error', label: 'Sync sin conexión', detail: message }
+}
 const reconcileAssignments = (current, campers) => {
   if (!campers.length) return null
   if (!Array.isArray(current)) return null
@@ -261,8 +268,8 @@ export default function App() {
           pendingRemoteSaveRef.current = false
         }
         setSyncStatus({ mode: 'online', label: 'Sincronizado' })
-      } catch {
-        if (!cancelled) setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+      } catch (error) {
+        if (!cancelled) setSyncStatus(syncErrorStatus(error))
       } finally {
         if (!cancelled) pollTimeout = window.setTimeout(poll, 4000)
       }
@@ -281,8 +288,8 @@ export default function App() {
         }
         syncReadyRef.current = true
         setSyncStatus({ mode: 'online', label: 'Sincronizado' })
-      } catch {
-        if (!cancelled) setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+      } catch (error) {
+        if (!cancelled) setSyncStatus(syncErrorStatus(error))
       } finally {
         if (!cancelled) pollTimeout = window.setTimeout(poll, 4000)
       }
@@ -303,9 +310,9 @@ export default function App() {
         lastRemoteUpdateRef.current = saved?.updatedAt || lastRemoteUpdateRef.current
         pendingRemoteSaveRef.current = false
         setSyncStatus({ mode: 'online', label: 'Sincronizado' })
-      } catch {
+      } catch (error) {
         pendingRemoteSaveRef.current = true
-        setSyncStatus({ mode: 'error', label: 'Sync sin conexión' })
+        setSyncStatus(syncErrorStatus(error))
       }
     }, 650)
     return () => window.clearTimeout(timeout)
@@ -324,5 +331,5 @@ export default function App() {
     if (sourceIndex === targetIndex) return
     setAssignments((current) => current.map((ids, index) => index === sourceIndex ? ids.filter((id) => id !== memberId) : index === targetIndex ? [...ids, memberId] : ids))
   }
-  return <div className="app-shell"><header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><span className={`sync-pill ${syncStatus.mode}`} title={isRemoteSyncConfigured() ? 'Sincronización entre dispositivos activa si Supabase está configurado.' : 'Configura Supabase para compartir los datos entre dispositivos.'}><i />{syncStatus.label}</span><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header><main>{active === 'tryouts' ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} /> : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} />}</main><footer><span className="brand footer-brand"><Brand footer /></span><p>Equipos equilibrados. Experiencias inolvidables.</p><small>{isRemoteSyncConfigured() ? 'Los datos se sincronizan entre dispositivos y también quedan respaldados localmente.' : 'Modo local: configura Supabase para sincronizar datos entre dispositivos.'}</small></footer></div>
+  return <div className="app-shell"><header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><span className={`sync-pill ${syncStatus.mode}`} title={syncStatus.detail || (isRemoteSyncConfigured() ? 'Sincronización entre dispositivos activa si Supabase está configurado.' : 'Configura Supabase para compartir los datos entre dispositivos.')}><i />{syncStatus.label}</span><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header><main>{active === 'tryouts' ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} /> : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} />}</main><footer><span className="brand footer-brand"><Brand footer /></span><p>Equipos equilibrados. Experiencias inolvidables.</p><small>{isRemoteSyncConfigured() ? 'Los datos se sincronizan entre dispositivos y también quedan respaldados localmente.' : 'Modo local: configura Supabase para sincronizar datos entre dispositivos.'}</small></footer></div>
 }
