@@ -147,8 +147,10 @@ function CamperForm({ camper, onSave, onClose }) {
 function ImportZone({ onImport }) {
   const [dragging, setDragging] = useState(false)
   const [notice, setNotice] = useState(null)
+  const [duplicateDetails, setDuplicateDetails] = useState([])
   const load = async (file) => {
     if (!file) return
+    setDuplicateDetails([])
     const extension = file.name.split('.').pop().toLowerCase()
     if (extension === 'pdf') {
       setNotice({ type: 'warning', text: 'La hoja escaneada puede conservarse como respaldo, pero la letra manuscrita no se importa con suficiente seguridad. Transcribe las notas o exporta la hoja digital como CSV.' })
@@ -161,7 +163,8 @@ function ImportZone({ onImport }) {
     try {
       const parsed = parseCampersFile(await readCsvText(file))
       const errors = parsed.errors
-      const { added, updated, duplicates } = onImport(parsed)
+      const { added, updated, duplicates, duplicateDetails: detailRows } = onImport(parsed)
+      setDuplicateDetails(detailRows)
       const details = [errors.length ? `${errors.length} fila(s) con errores` : '', duplicates ? `${duplicates} duplicado(s)` : ''].filter(Boolean).join(' · ')
       setNotice({ type: added || updated ? 'success' : 'warning', text: `${added} campista(s) nuevo(s), ${updated} actualizado(s)${details ? `. ${details}.` : '.'}` })
     } catch (error) {
@@ -175,6 +178,7 @@ function ImportZone({ onImport }) {
     </label>
     <div className="paper-note"><AlertTriangle size={17} /><span><strong>¿Usan la hoja impresa?</strong> Sí. Los evaluadores pueden llenarla en papel; después se transcribe o se carga el CSV. No es obligatorio usar el teléfono.</span></div>
     {notice && <div className={`import-notice ${notice.type}`}><span>{notice.text}</span><button onClick={() => setNotice(null)} aria-label="Cerrar"><X size={15} /></button></div>}
+    {duplicateDetails.length > 0 && <div className="duplicate-report"><div><strong>Duplicados detectados</strong><button type="button" onClick={() => navigator.clipboard?.writeText(duplicateDetails.map(({ reason, camper }) => `${reason}: ${fullName(camper)} · ${camper.age} años · Cabaña ${camper.cabin || '—'}`).join('\n'))}>Copiar lista</button></div><ul>{duplicateDetails.map(({ key, reason, camper }) => <li key={key}><span>{reason}</span><strong>{fullName(camper)}</strong><small>{camper.age} años · Cabaña {camper.cabin || '—'}</small></li>)}</ul></div>}
   </div>
 }
 
@@ -190,7 +194,16 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
   }
   const importCampers = ({ campers: incoming, hasCabin, hasScores }) => {
     const seen = new Set()
-    const unique = incoming.filter((camper) => { const key = identityKey(camper); if (seen.has(key)) return false; seen.add(key); return true })
+    const duplicateDetails = []
+    const unique = incoming.filter((camper, index) => {
+      const key = identityKey(camper)
+      if (seen.has(key)) {
+        duplicateDetails.push({ key: `archivo-${key}-${index}`, reason: 'Repetido en el archivo', camper })
+        return false
+      }
+      seen.add(key)
+      return true
+    })
     const existingKeys = new Set(campers.map(identityKey))
     const scoreValues = (camper) => Object.fromEntries(SKILLS.map(({ key }) => [key, camper[key]]))
     const mergeCamper = (current, imported) => ({
@@ -203,6 +216,9 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
     })
     const added = unique.filter((camper) => !existingKeys.has(identityKey(camper))).length
     const updated = unique.length - added
+    unique.filter((camper) => existingKeys.has(identityKey(camper))).forEach((camper, index) => {
+      duplicateDetails.push({ key: `existente-${identityKey(camper)}-${index}`, reason: 'Ya existía y fue actualizado', camper })
+    })
     setCampers((items) => {
       const incomingByKey = new Map(unique.map((camper) => [identityKey(camper), camper]))
       const currentKeys = new Set(items.map(identityKey))
@@ -212,7 +228,7 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
         .map((camper) => ({ ...camper, id: crypto.randomUUID(), cabin: hasCabin ? camper.cabin : '', ...(hasScores ? scoreValues(camper) : {}) }))
       return [...updatedItems, ...additions]
     })
-    return { added, updated, duplicates: incoming.length - unique.length }
+    return { added, updated, duplicates: duplicateDetails.length, duplicateDetails }
   }
   const addDemo = () => setCampers(DEMO_CAMPERS.map(([fullDemoName, age, strength, speed, wit, creativity, leadership], index) => { const [name, ...lastNameParts] = fullDemoName.split(' '); return { id: crypto.randomUUID(), name, lastName: lastNameParts.join(' '), age, cabin: `${index % 2 ? 'K' : 'S'}${(index % 12) + 1}`, strength, speed, wit, creativity, leadership } }))
   const deleteAll = () => {

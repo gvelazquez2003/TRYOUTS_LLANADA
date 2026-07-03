@@ -106,6 +106,14 @@ header { height: 82px; }
 .import-notice.warning { background: #fbefd7; color: #815e1f; }
 .import-notice.error { background: #f9e5e1; color: #9b4335; }
 .import-notice button { border: 0; background: transparent; color: currentColor; padding: 0; }
+.duplicate-report { margin-top: 11px; border: 1px solid #efd7a3; border-radius: 12px; background: #fffaf0; overflow: hidden; }
+.duplicate-report > div { padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; color: #73551a; border-bottom: 1px solid #f0dfb9; }
+.duplicate-report button { border: 1px solid #e1c17d; border-radius: 8px; background: #fff; color: #765517; padding: 6px 9px; font-size: 11px; font-weight: 800; }
+.duplicate-report ul { margin: 0; padding: 0; max-height: 230px; overflow: auto; list-style: none; }
+.duplicate-report li { padding: 9px 12px; display: grid; grid-template-columns: minmax(130px, auto) 1fr auto; gap: 10px; align-items: center; border-top: 1px solid rgba(224,193,125,.35); font-size: 12px; }
+.duplicate-report li:first-child { border-top: 0; }
+.duplicate-report li > span { color: #8a6720; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
+.duplicate-report li small { color: #8a7c5c; white-space: nowrap; }
 
 /* Pesos y personalización de tribus */
 .weights-panel { margin: -18px 0 18px; padding: 16px 18px; border: 1px solid #dedfd8; background: #fff; border-radius: 15px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 7px 22px; }

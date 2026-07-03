@@ -10,6 +10,8 @@ También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, 
 
 Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y tildes. La carga de CSV intenta leer correctamente archivos UTF-8 y Windows-1252/ANSI.
 
+Cuando una carga masiva encuentra duplicados, la app muestra cuáles son y permite copiar la lista para verificarlos más rápido.
+
 ## Desarrollo
 
 ```bash
