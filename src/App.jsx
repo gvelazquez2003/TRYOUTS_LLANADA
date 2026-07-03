@@ -10,7 +10,8 @@ const emptyForm = { name: '', lastName: '', age: '', cabin: '', ...Object.fromEn
 const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camper[key], 0) / SKILLS.length
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
 const fullName = (camper) => [camper.name, camper.lastName].filter(Boolean).join(' ')
-const identityKey = ({ name = '', lastName = '' }) => `${name.trim().toLowerCase()}|${lastName.trim().toLowerCase()}`
+const normalizeIdentity = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
+const identityKey = ({ name = '', lastName = '' }) => `${normalizeIdentity(name)}|${normalizeIdentity(lastName)}`
 const syncErrorStatus = (error) => {
   const message = error?.message || ''
   if (message.includes('(404)')) return { mode: 'error', label: 'Tabla sync no existe', detail: message }
@@ -144,10 +145,11 @@ function ImportZone({ onImport }) {
       return
     }
     try {
-      const { campers, errors } = parseCampersFile(await file.text())
-      const { added, duplicates } = onImport(campers)
+      const parsed = parseCampersFile(await file.text())
+      const errors = parsed.errors
+      const { added, updated, duplicates } = onImport(parsed)
       const details = [errors.length ? `${errors.length} fila(s) con errores` : '', duplicates ? `${duplicates} duplicado(s)` : ''].filter(Boolean).join(' · ')
-      setNotice({ type: added ? 'success' : 'warning', text: `${added} campista(s) importados${details ? `. ${details}.` : '.'}` })
+      setNotice({ type: added || updated ? 'success' : 'warning', text: `${added} campista(s) nuevo(s), ${updated} actualizado(s)${details ? `. ${details}.` : '.'}` })
     } catch (error) {
       setNotice({ type: 'error', text: error.message })
     }
@@ -172,11 +174,31 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
     else setCampers((items) => [...items, { ...camper, id: crypto.randomUUID() }])
     setModalOpen(false); setEditing(null)
   }
-  const importCampers = (incoming) => {
-    const known = new Set(campers.map(identityKey))
-    const unique = incoming.filter((camper) => { const key = identityKey(camper); if (known.has(key)) return false; known.add(key); return true })
-    setCampers((items) => [...items, ...unique.map((camper) => ({ ...camper, id: crypto.randomUUID() }))])
-    return { added: unique.length, duplicates: incoming.length - unique.length }
+  const importCampers = ({ campers: incoming, hasCabin, hasScores }) => {
+    const seen = new Set()
+    const unique = incoming.filter((camper) => { const key = identityKey(camper); if (seen.has(key)) return false; seen.add(key); return true })
+    const existingKeys = new Set(campers.map(identityKey))
+    const scoreValues = (camper) => Object.fromEntries(SKILLS.map(({ key }) => [key, camper[key]]))
+    const mergeCamper = (current, imported) => ({
+      ...current,
+      name: imported.name,
+      lastName: imported.lastName,
+      age: imported.age,
+      cabin: hasCabin ? (imported.cabin || current.cabin || '') : (current.cabin || ''),
+      ...(hasScores ? scoreValues(imported) : {}),
+    })
+    const added = unique.filter((camper) => !existingKeys.has(identityKey(camper))).length
+    const updated = unique.length - added
+    setCampers((items) => {
+      const incomingByKey = new Map(unique.map((camper) => [identityKey(camper), camper]))
+      const currentKeys = new Set(items.map(identityKey))
+      const updatedItems = items.map((item) => incomingByKey.has(identityKey(item)) ? mergeCamper(item, incomingByKey.get(identityKey(item))) : item)
+      const additions = unique
+        .filter((camper) => !currentKeys.has(identityKey(camper)))
+        .map((camper) => ({ ...camper, id: crypto.randomUUID(), cabin: hasCabin ? camper.cabin : '', ...(hasScores ? scoreValues(camper) : {}) }))
+      return [...updatedItems, ...additions]
+    })
+    return { added, updated, duplicates: incoming.length - unique.length }
   }
   const addDemo = () => setCampers(DEMO_CAMPERS.map(([fullDemoName, age, strength, speed, wit, creativity, leadership], index) => { const [name, ...lastNameParts] = fullDemoName.split(' '); return { id: crypto.randomUUID(), name, lastName: lastNameParts.join(' '), age, cabin: `${index % 2 ? 'K' : 'S'}${(index % 12) + 1}`, strength, speed, wit, creativity, leadership } }))
   const deleteAll = () => {
@@ -188,6 +210,7 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
     <section className="stats-row"><article><span className="stat-icon green"><Users /></span><div><strong>{campers.length}</strong><small>Campistas registrados</small></div></article><article><span className="stat-icon gold"><BarChart3 /></span><div><strong>{campers.length ? (campers.reduce((total, camper) => total + camperAverage(camper), 0) / campers.length).toFixed(1) : '—'}</strong><small>Promedio de aptitudes</small></div></article><article><span className="stat-icon coral"><Trophy /></span><div><strong>16</strong><small>Tribus disponibles</small></div></article></section>
     <section className="panel roster-panel"><div className="panel-header"><div><span className="eyebrow">Base de campistas</span><h2>Participantes</h2><p>Administra las fichas antes de hacer la división.</p></div><div className="panel-actions">{campers.length > 0 && <button className="button danger-action" onClick={deleteAll}><Trash2 size={18} /> Eliminar todos</button>}<button className="button primary" onClick={() => { setEditing(null); setModalOpen(true) }}><Plus size={18} /> Agregar campista</button></div></div>
       <ImportZone onImport={importCampers} />
+      <div className="preload-note"><strong>Flujo recomendado:</strong> primero sube la lista previa con Nombre, Apellido y Edad. Después sube otro CSV con esos mismos nombres y apellidos para actualizar cabaña y aptitudes.</div>
       {campers.length ? <><div className="toolbar"><div className="search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar campista o cabaña..." /></div><span>{filtered.length} de {campers.length}</span></div><div className="table-wrap"><table><thead><tr><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th>{SKILLS.map(({ key, label }) => <th key={key}>{label}</th>)}<th>Prom.</th><th /></tr></thead><tbody>{filtered.map((camper) => <tr key={camper.id}><td><span className="avatar">{initials(fullName(camper))}</span><strong>{camper.name}</strong></td><td><strong>{camper.lastName || '—'}</strong></td><td>{camper.age} años</td><td><span className="cabin-pill">{camper.cabin || '—'}</span></td>{SKILLS.map(({ key }) => <td key={key}><span className={`score score-${camper[key]}`}>{camper[key]}</span></td>)}<td><strong>{camperAverage(camper).toFixed(1)}</strong></td><td><div className="row-actions"><button onClick={() => { setEditing(camper); setModalOpen(true) }} title="Editar"><Edit3 size={17} /></button><button className="danger" onClick={() => setCampers((items) => items.filter(({ id }) => id !== camper.id))} title="Eliminar"><Trash2 size={17} /></button></div></td></tr>)}</tbody></table></div></> : <div className="empty-state"><span><UserPlus size={34} /></span><h3>Tu lista está esperando aventureros</h3><p>Agrega el primer campista, arrastra un CSV o carga un grupo de ejemplo.</p><div><button className="button primary" onClick={() => setModalOpen(true)}><Plus size={18} /> Agregar campista</button><button className="button secondary" onClick={addDemo}>Cargar datos de prueba</button></div></div>}
     </section>
     {campers.length > 0 && <div className="next-banner"><div><span><Sparkles size={22} /></span><div><strong>¿Todos listos?</strong><p>Cuando termines las evaluaciones, crea las 16 tribus equilibradas.</p></div></div><button className="button light" onClick={onGoTribes}>Ir a formar tribus <ArrowRight size={18} /></button></div>}

@@ -99,6 +99,8 @@ header { height: 82px; }
 .paper-note { margin-top: 10px; display: flex; align-items: center; gap: 8px; color: #78867f; font-size: 11px; }
 .paper-note svg { color: #ba832a; flex: 0 0 auto; }
 .paper-note strong { color: #596c64; }
+.preload-note { padding: 11px 30px; border-bottom: 1px solid #ecebe4; background: #f7f6ef; color: #687870; font-size: 12px; line-height: 1.45; }
+.preload-note strong { color: var(--green); }
 .import-notice { margin-top: 11px; padding: 9px 11px; border-radius: 9px; display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
 .import-notice.success { background: #e4f1e6; color: #286445; }
 .import-notice.warning { background: #fbefd7; color: #815e1f; }

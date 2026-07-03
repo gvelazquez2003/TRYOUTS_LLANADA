@@ -6,6 +6,8 @@ La carga masiva acepta archivos CSV con las columnas `Nombre`, `Apellido`, `Edad
 
 Desde la tabla se pueden eliminar todos los campistas de una sola vez. Después de formar las tribus, cada tarjeta de tribu incluye una descarga HTML imprimible con nombre, apellido, edad y cabaña para entregarla al staff.
 
+También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido` y actualiza esa ficha en vez de crear un duplicado.
+
 ## Desarrollo
 
 ```bash
