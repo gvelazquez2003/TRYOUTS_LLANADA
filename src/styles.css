@@ -131,13 +131,17 @@ header { height: 82px; }
 .tribe-filter-bar .search { flex: 1 1 320px; min-width: 220px; }
 .tribe-filter-bar > span { color: #7b8983; font-size: 12px; white-space: nowrap; }
 .tribe-filter-bar button { border: 0; border-radius: 999px; background: #edf3e9; color: var(--green); padding: 8px 11px; font-size: 11px; font-weight: 800; cursor: pointer; }
-.tribe-card.no-filter-match { opacity: .58; }
+.tribe-add-row { margin: -6px 0 18px; display: flex; justify-content: flex-end; }
+.tribe-filter-empty { margin: -5px 0 18px; }
 .modal-filter-note { margin: -8px 0 14px; padding: 9px 11px; border-radius: 10px; background: #f1f4ee; color: #63766d; display: flex; align-items: center; gap: 7px; font-size: 12px; }
 .move-help { margin: -13px 0 16px; color: #7d8b85; font-size: 12px; line-height: 1.5; }
 .move-select { display: grid; gap: 3px; }
 .move-select span { color: #8c9892; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
 .move-select select { max-width: 150px; border: 1px solid #d9ddd6; border-radius: 8px; background: #fff; color: var(--green); padding: 7px; font: inherit; font-size: 11px; }
 .camper-form-grid { grid-template-columns: 1fr 1fr 118px 118px; }
+.tribe-add-grid { grid-template-columns: 1fr 1fr 118px 118px; }
+.field.full-span { grid-column: 1 / -1; }
+.field select { border: 1px solid #d8ddd5; border-radius: 12px; min-height: 46px; padding: 0 12px; background: #fff; color: var(--green); font: inherit; }
 .modal-heading-actions { display: flex; align-items: center; gap: 8px; }
 .tribe-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding-top: 9px; }
 .tribe-actions button { border: 0; background: transparent; color: var(--tribe); display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; padding: 0; }
@@ -157,12 +161,15 @@ header { height: 82px; }
   .drop-zone .button { margin-left: 55px; }
   .panel-actions { width: 100%; justify-content: flex-start; }
   .camper-form-grid { grid-template-columns: 1fr; }
+  .tribe-add-grid { grid-template-columns: 1fr; }
   .modal-heading-actions { align-items: flex-end; flex-direction: column-reverse; }
   .weights-panel { grid-template-columns: 1fr; }
   .weights-panel > small { grid-column: 1; }
   .tribe-filter-bar { align-items: flex-start; flex-direction: column; }
   .tribe-filter-bar .search { flex-basis: auto; width: 100%; }
   .tribe-filter-bar > span { white-space: normal; }
+  .tribe-add-row { justify-content: stretch; }
+  .tribe-add-row .button { width: 100%; }
 }
 
 @media (max-width: 460px) {
