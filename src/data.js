@@ -6,27 +6,28 @@ export const SKILLS = [
   { key: 'leadership', label: 'Liderazgo', icon: '🏅' },
 ]
 
-// Las prioridades indicadas suman 105. El algoritmo las normaliza para
-// conservar exactamente la proporción solicitada sin perder ninguna categoría.
+// Pesos de balance definidos para el contexto del campamento.
+// Edad + Velocidad = 50%, Liderazgo = 20%, Fuerza = 20%,
+// Creatividad = 5%, Inteligencia = 5%.
 export const BALANCE_DIMENSIONS = [
   { key: 'age', label: 'Edad', weight: 25 },
   { key: 'speed', label: 'Velocidad', weight: 25 },
   { key: 'leadership', label: 'Liderazgo', weight: 20 },
-  { key: 'strength', label: 'Fuerza', weight: 15 },
-  { key: 'creativity', label: 'Creatividad', weight: 10 },
-  { key: 'wit', label: 'Inteligencia', weight: 10 },
+  { key: 'strength', label: 'Fuerza', weight: 20 },
+  { key: 'creativity', label: 'Creatividad', weight: 5 },
+  { key: 'wit', label: 'Inteligencia', weight: 5 },
 ]
 
 export const TRIBES = [
-  ['Alemania', '🇩🇪', '#2d3648'], ['Francia', '🇫🇷', '#3155a4'],
-  ['Holanda', '🇳🇱', '#e56b35'], ['Portugal', '🇵🇹', '#167a53'],
-  ['Colombia', '🇨🇴', '#d4a91c'], ['México', '🇲🇽', '#1f875d'],
-  ['Noruega', '🇳🇴', '#c33b4e'], ['Bélgica', '🇧🇪', '#d9a827'],
-  ['Argentina', '🇦🇷', '#53a7c7'], ['Brasil', '🇧🇷', '#30934b'],
-  ['Japón', '🇯🇵', '#d64b5c'], ['Inglaterra', '🏴', '#a83f47'],
-  ['Estados Unidos', '🇺🇸', '#3c5a96'], ['España', '🇪🇸', '#c9473b'],
-  ['Canadá', '🇨🇦', '#d44848'], ['Uruguay', '🇺🇾', '#428ebd'],
-].map(([name, flag, color]) => ({ name, flag, color }))
+  ['Alemania', 'de', '#2d3648'], ['Francia', 'fr', '#3155a4'],
+  ['Holanda', 'nl', '#e56b35'], ['Portugal', 'pt', '#167a53'],
+  ['Colombia', 'co', '#d4a91c'], ['México', 'mx', '#1f875d'],
+  ['Noruega', 'no', '#c33b4e'], ['Bélgica', 'be', '#d9a827'],
+  ['Argentina', 'ar', '#53a7c7'], ['Brasil', 'br', '#30934b'],
+  ['Japón', 'jp', '#d64b5c'], ['Inglaterra', 'gb-eng', '#a83f47'],
+  ['Estados Unidos', 'us', '#3c5a96'], ['España', 'es', '#c9473b'],
+  ['Canadá', 'ca', '#d44848'], ['Uruguay', 'uy', '#428ebd'],
+].map(([name, flagCode, color]) => ({ name, flagCode, flagUrl: `https://flagcdn.com/w80/${flagCode}.png`, color }))
 
 export const DEMO_CAMPERS = [
   ['Sofía Herrera', 12, 3, 5, 4, 5, 4], ['Mateo Rojas', 13, 5, 4, 3, 2, 4],

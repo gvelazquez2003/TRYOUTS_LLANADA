@@ -12,6 +12,8 @@ Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y til
 
 Cuando una carga masiva encuentra duplicados, la app muestra cuáles son y permite copiar la lista para verificarlos más rápido.
 
+El balance usa estos pesos: Edad + Velocidad 50%, Liderazgo 20%, Fuerza 20%, Creatividad 5% e Inteligencia 5%.
+
 ## Desarrollo
 
 ```bash

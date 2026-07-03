@@ -70,7 +70,7 @@ export function balanceCampers(campers) {
     if (!best || score < best.score) best = { score, teams }
   }
 
-  return best.teams.map(({ name, flag, color, members }) => ({ name, flag, color, members }))
+  return best.teams.map(({ name, flagCode, flagUrl, color, members }) => ({ name, flagCode, flagUrl, color, members }))
 }
 
 export function getBalanceScore(teams, campers) {
