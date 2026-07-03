@@ -2,11 +2,11 @@
 
 Aplicación para registrar las aptitudes de campistas, distribuirlos equitativamente entre 16 tribus, personalizar la distribución final y descargar hojas imprimibles para el staff.
 
-La carga masiva acepta archivos CSV con las columnas `Nombre`, `Apellido`, `Edad`, `Cabaña`, `Fuerza`, `Velocidad`, `Inteligencia`, `Creatividad` y `Liderazgo`. `Cabaña` es solo un identificador y no afecta la división de tribus. Los duplicados se detectan usando `Nombre + Apellido`. Las calificaciones deben ser enteros del 0 al 5. Las hojas impresas pueden transcribirse después de la evaluación; los escaneos manuscritos no se procesan automáticamente para evitar errores de lectura.
+La carga masiva acepta archivos CSV con las columnas `Nombre`, `Apellido`, `Edad`, `Cabaña`, `Fuerza`, `Velocidad`, `Inteligencia`, `Creatividad` y `Liderazgo`. `Cabaña` es solo un identificador y no afecta la división de tribus. Los duplicados se detectan usando `Nombre + Apellido + Edad + Cabaña` cuando el archivo trae cabaña; si es una pre-carga sin cabaña, se usa `Nombre + Apellido + Edad`. Las calificaciones deben ser enteros del 0 al 5. Las hojas impresas pueden transcribirse después de la evaluación; los escaneos manuscritos no se procesan automáticamente para evitar errores de lectura.
 
 Desde la tabla se pueden eliminar todos los campistas de una sola vez. Después de formar las tribus, cada tarjeta de tribu incluye una descarga HTML imprimible con nombre, apellido, edad y cabaña para entregarla al staff.
 
-También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido` y actualiza esa ficha en vez de crear un duplicado.
+También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido + Edad` si todavía no tiene cabaña y actualiza esa ficha en vez de crear un duplicado.
 
 Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y tildes. La carga de CSV intenta leer correctamente archivos UTF-8 y Windows-1252/ANSI.
 
