@@ -114,6 +114,53 @@ function downloadTribeSheet(team) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function downloadCabinAssignmentSheet(rows, cabinFilter) {
+  const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
+  const title = cabinFilter ? `Cabaña ${cabinFilter}` : 'Todas las cabañas'
+  const tableRows = rows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(camper.cabin || '—')}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)} · Campistas por cabaña</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #173f35; margin: 32px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #173f35; padding-bottom: 16px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 32px; }
+    .meta { text-align: right; color: #617168; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    th { text-align: left; background: #edf3e9; color: #173f35; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    th, td { border: 1px solid #d9dfd6; padding: 10px 12px; }
+    td:first-child { width: 48px; text-align: center; color: #617168; }
+    .note { margin-top: 22px; border: 1px dashed #b9c4b8; border-radius: 10px; padding: 14px; color: #52645d; }
+    @media print { body { margin: 20mm; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:18px;padding:10px 14px;border:0;border-radius:8px;background:#173f35;color:white;font-weight:700;">Imprimir hoja</button>
+  <header>
+    <div><h1>${escapeHtml(title)}</h1><p>Lista de campistas con su tribu asignada.</p></div>
+    <div class="meta"><strong>Formación de Tribus</strong><br />${rows.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
+  </header>
+  <table>
+    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Tribu</th></tr></thead>
+    <tbody>${tableRows || '<tr><td colspan="6">No hay campistas para esta cabaña.</td></tr>'}</tbody>
+  </table>
+  <div class="note"><strong>Nota para staff:</strong> usa esta hoja para ubicar a los campistas de cada cabaña y enviarlos a su tribu correspondiente.</div>
+</body>
+</html>`
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${cabinFilter ? `cabana-${fileSafe(cabinFilter)}` : 'campistas-por-cabana'}-tribus.html`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function Brand({ footer = false }) {
   return <span className={`brand-content ${footer ? 'footer-brand-content' : ''}`}><img className="brand-logo" src={llanadaLogo} alt="La Llanada Venezuela" /><span className="brand-title"><strong>FORMACIÓN DE</strong><small>TRIBUS</small></span></span>
 }
@@ -296,17 +343,26 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
 function Tribes({ campers, teams, generated, onGenerate, onMove, onAddCamper }) {
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [tribeQuery, setTribeQuery] = useState('')
+  const [cabinFilter, setCabinFilter] = useState('')
   const [addingTeamIndex, setAddingTeamIndex] = useState(null)
   const balance = getBalanceScore(teams, campers)
   const selected = selectedIndex === null ? null : teams[selectedIndex]
   const hasTribeFilter = generated && tribeQuery.trim().length > 0
+  const hasCabinFilter = generated && cabinFilter.trim().length > 0
+  const hasRosterFilter = hasTribeFilter || hasCabinFilter
   const filteredTeams = useMemo(() => teams.map((team) => ({
     ...team,
-    visibleMembers: hasTribeFilter ? team.members.filter((member) => matchesCamperQuery(member, tribeQuery)) : team.members,
-  })), [teams, tribeQuery, hasTribeFilter])
-  const displayedTeams = hasTribeFilter ? filteredTeams.filter((team) => team.visibleMembers.length) : filteredTeams
+    visibleMembers: hasRosterFilter
+      ? team.members.filter((member) => (!hasTribeFilter || matchesCamperQuery(member, tribeQuery)) && (!hasCabinFilter || normalizeIdentity(member.cabin) === normalizeIdentity(cabinFilter)))
+      : team.members,
+  })), [teams, tribeQuery, cabinFilter, hasTribeFilter, hasCabinFilter, hasRosterFilter])
+  const displayedTeams = hasRosterFilter ? filteredTeams.filter((team) => team.visibleMembers.length) : filteredTeams
   const filteredTotal = filteredTeams.reduce((total, team) => total + team.visibleMembers.length, 0)
-  const selectedVisibleMembers = selected ? (hasTribeFilter ? selected.members.filter((member) => matchesCamperQuery(member, tribeQuery)) : selected.members) : []
+  const selectedVisibleMembers = selected ? (hasRosterFilter ? selected.members.filter((member) => (!hasTribeFilter || matchesCamperQuery(member, tribeQuery)) && (!hasCabinFilter || normalizeIdentity(member.cabin) === normalizeIdentity(cabinFilter))) : selected.members) : []
+  const cabinOptions = useMemo(() => Array.from(new Set(campers.map((camper) => camper.cabin).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es', { numeric: true })), [campers])
+  const cabinRows = useMemo(() => teams.flatMap((team) => team.members.map((camper) => ({ camper, team })))
+    .filter(({ camper }) => !hasCabinFilter || normalizeIdentity(camper.cabin) === normalizeIdentity(cabinFilter))
+    .sort((a, b) => (a.camper.cabin || '').localeCompare(b.camper.cabin || '', 'es', { numeric: true }) || fullName(a.camper).localeCompare(fullName(b.camper), 'es')), [teams, cabinFilter, hasCabinFilter])
   const dropMember = (event, targetIndex) => {
     event.preventDefault()
     const memberId = event.dataTransfer.getData('text/camper-id')
@@ -320,11 +376,12 @@ function Tribes({ campers, teams, generated, onGenerate, onMove, onAddCamper }) 
     <section className="tribe-section"><div className="section-heading"><div><span className="eyebrow">Mapa de tribus</span><h2>{generated ? 'Distribución actual' : 'Las tribus del campamento'}</h2></div>{generated && <div className="result-legend"><span><i className="dot green-dot" /> Cambios manuales habilitados</span><span>Arrastra campistas entre tribus</span></div>}</div>
       {generated && <div className="customize-hint"><MoveRight size={18} /><span><strong>Esta distribución es editable.</strong> Abre una tribu para mover a un campista, o arrástralo directamente entre tarjetas.</span></div>}
       {generated && <div className="tribe-filter-bar"><div className="search"><Search size={18} /><input value={tribeQuery} onChange={(event) => setTribeQuery(event.target.value)} placeholder="Filtrar en tribus por nombre, cabaña o edad..." /></div><span>{hasTribeFilter ? `${filteredTotal} coincidencia(s) de ${campers.length}` : `${campers.length} campistas distribuidos`}</span>{hasTribeFilter && <button type="button" onClick={() => setTribeQuery('')}>Limpiar filtro</button>}</div>}
+      {generated && <div className="cabin-export-bar"><label className="field"><span>Filtrar por cabaña</span><select value={cabinFilter} onChange={(event) => setCabinFilter(event.target.value)}><option value="">Todas las cabañas</option>{cabinOptions.map((cabin) => <option key={cabin} value={cabin}>{cabin}</option>)}</select></label><span>{hasCabinFilter ? `${cabinRows.length} campista(s) de ${cabinFilter}` : `${cabinRows.length} campista(s) con tribu`}</span><button type="button" className="button secondary" disabled={!cabinRows.length} onClick={() => downloadCabinAssignmentSheet(cabinRows, cabinFilter)}><Download size={16} /> Exportar lista</button>{hasCabinFilter && <button type="button" onClick={() => setCabinFilter('')}>Ver todas</button>}</div>}
       {generated && <div className="tribe-add-row"><button type="button" className="button secondary" onClick={() => setAddingTeamIndex(selectedIndex ?? 0)}><Plus size={18} /> Agregar campista a tribu</button></div>}
-      {hasTribeFilter && !displayedTeams.length && <div className="empty-mini tribe-filter-empty">No hay tribus con campistas que coincidan con ese filtro.</div>}
-      <div className="tribe-grid">{displayedTeams.map((team) => { const teamIndex = teams.findIndex(({ name }) => name === team.name); const averages = teamAverages(team.members); const visibleMembers = team.visibleMembers || team.members; return <article className={`tribe-card ${generated ? 'generated' : ''}`} key={team.name} style={{ '--tribe': team.color }} onClick={() => generated && setSelectedIndex(teamIndex)} onDragOver={(event) => generated && event.preventDefault()} onDrop={(event) => dropMember(event, teamIndex)}><div className="tribe-accent" /><div className="tribe-top"><FlagImage team={team} /><span className="member-count"><Users size={14} /> {hasTribeFilter ? `${visibleMembers.length}/${team.members.length}` : team.members.length}</span></div><h3>{team.name}</h3>{generated ? <><div className="member-preview">{visibleMembers.slice(0, 3).map((member) => <span draggable onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData('text/camper-id', member.id); event.dataTransfer.setData('text/team-index', String(teamIndex)) }} className="mini-avatar" title={`${fullName(member)} · arrastra para mover`} key={member.id}>{initials(fullName(member))}</span>)}{visibleMembers.length > 3 && <span className="mini-avatar more">+{visibleMembers.length - 3}</span>}{!hasTribeFilter && !team.members.length && <small>Suelta un campista aquí</small>}</div><div className="tribe-metrics"><span>Edad <strong>{averages.age ? averages.age.toFixed(1) : '—'}</strong></span><span>Aptitud <strong>{averages.skills ? averages.skills.toFixed(1) : '—'}</strong></span></div></> : <p>Esperando distribución</p>} {generated && <div className="tribe-actions"><button type="button" onClick={(event) => { event.stopPropagation(); setSelectedIndex(teamIndex) }}>Editar <ChevronRight size={15} /></button><button type="button" disabled={!team.members.length} onClick={(event) => { event.stopPropagation(); downloadTribeSheet(team) }}><Download size={14} /> Hoja</button></div>}</article> })}</div>
+      {(hasTribeFilter || hasCabinFilter) && !displayedTeams.length && <div className="empty-mini tribe-filter-empty">No hay tribus con campistas que coincidan con ese filtro.</div>}
+      <div className="tribe-grid">{displayedTeams.map((team) => { const teamIndex = teams.findIndex(({ name }) => name === team.name); const averages = teamAverages(team.members); const visibleMembers = team.visibleMembers || team.members; return <article className={`tribe-card ${generated ? 'generated' : ''}`} key={team.name} style={{ '--tribe': team.color }} onClick={() => generated && setSelectedIndex(teamIndex)} onDragOver={(event) => generated && event.preventDefault()} onDrop={(event) => dropMember(event, teamIndex)}><div className="tribe-accent" /><div className="tribe-top"><FlagImage team={team} /><span className="member-count"><Users size={14} /> {hasRosterFilter ? `${visibleMembers.length}/${team.members.length}` : team.members.length}</span></div><h3>{team.name}</h3>{generated ? <><div className="member-preview">{visibleMembers.slice(0, 3).map((member) => <span draggable onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData('text/camper-id', member.id); event.dataTransfer.setData('text/team-index', String(teamIndex)) }} className="mini-avatar" title={`${fullName(member)} · arrastra para mover`} key={member.id}>{initials(fullName(member))}</span>)}{visibleMembers.length > 3 && <span className="mini-avatar more">+{visibleMembers.length - 3}</span>}{!hasRosterFilter && !team.members.length && <small>Suelta un campista aquí</small>}</div><div className="tribe-metrics"><span>Edad <strong>{averages.age ? averages.age.toFixed(1) : '—'}</strong></span><span>Aptitud <strong>{averages.skills ? averages.skills.toFixed(1) : '—'}</strong></span></div></> : <p>Esperando distribución</p>} {generated && <div className="tribe-actions"><button type="button" onClick={(event) => { event.stopPropagation(); setSelectedIndex(teamIndex) }}>Editar <ChevronRight size={15} /></button><button type="button" disabled={!team.members.length} onClick={(event) => { event.stopPropagation(); downloadTribeSheet(team) }}><Download size={14} /> Hoja</button></div>}</article> })}</div>
     </section>
-    {selected && <Modal onClose={() => setSelectedIndex(null)}><div className="modal-heading team-modal-title"><div><FlagImage team={selected} large /><div><span className="eyebrow">Personalizar tribu</span><h2>{selected.name}</h2></div></div><div className="modal-heading-actions"><button className="button secondary compact" disabled={!selected.members.length} onClick={() => downloadTribeSheet(selected)}><Download size={16} /> Descargar hoja</button><button className="icon-button" onClick={() => setSelectedIndex(null)}><X size={20} /></button></div></div><p className="move-help">Selecciona otra tribu para mover a un campista. Los cambios se guardan automáticamente en este dispositivo.</p>{hasTribeFilter && <div className="modal-filter-note"><Search size={15} /> Mostrando {selectedVisibleMembers.length} de {selected.members.length} por el filtro "{tribeQuery}".</div>}<div className="team-members">{selectedVisibleMembers.length ? selectedVisibleMembers.map((member) => <div key={member.id}><span className="avatar">{initials(fullName(member))}</span><div><strong>{fullName(member)}</strong><small>{member.age} años · Cabaña {member.cabin || '—'} · Promedio {camperAverage(member).toFixed(1)}</small></div><label className="move-select"><span>Mover a</span><select value={selectedIndex} onChange={(event) => onMove(member.id, selectedIndex, Number(event.target.value))}>{teams.map((team, index) => <option key={team.name} value={index}>{team.name}</option>)}</select></label></div>) : <div className="empty-mini">{selected.members.length && hasTribeFilter ? 'No hay coincidencias en esta tribu con el filtro activo.' : 'Esta tribu está vacía. Puedes arrastrar integrantes hasta su tarjeta.'}</div>}</div></Modal>}
+    {selected && <Modal onClose={() => setSelectedIndex(null)}><div className="modal-heading team-modal-title"><div><FlagImage team={selected} large /><div><span className="eyebrow">Personalizar tribu</span><h2>{selected.name}</h2></div></div><div className="modal-heading-actions"><button className="button secondary compact" disabled={!selected.members.length} onClick={() => downloadTribeSheet(selected)}><Download size={16} /> Descargar hoja</button><button className="icon-button" onClick={() => setSelectedIndex(null)}><X size={20} /></button></div></div><p className="move-help">Selecciona otra tribu para mover a un campista. Los cambios se guardan automáticamente en este dispositivo.</p>{hasRosterFilter && <div className="modal-filter-note"><Search size={15} /> Mostrando {selectedVisibleMembers.length} de {selected.members.length} con el filtro activo.</div>}<div className="team-members">{selectedVisibleMembers.length ? selectedVisibleMembers.map((member) => <div key={member.id}><span className="avatar">{initials(fullName(member))}</span><div><strong>{fullName(member)}</strong><small>{member.age} años · Cabaña {member.cabin || '—'} · Promedio {camperAverage(member).toFixed(1)}</small></div><label className="move-select"><span>Mover a</span><select value={selectedIndex} onChange={(event) => onMove(member.id, selectedIndex, Number(event.target.value))}>{teams.map((team, index) => <option key={team.name} value={index}>{team.name}</option>)}</select></label></div>) : <div className="empty-mini">{selected.members.length && hasRosterFilter ? 'No hay coincidencias en esta tribu con el filtro activo.' : 'Esta tribu está vacía. Puedes arrastrar integrantes hasta su tarjeta.'}</div>}</div></Modal>}
     {addingTeamIndex !== null && <Modal onClose={() => setAddingTeamIndex(null)}><TribeCamperForm teams={teams} initialTeamIndex={addingTeamIndex} onSave={(camper, teamIndex) => { onAddCamper(camper, teamIndex); setAddingTeamIndex(null) }} onClose={() => setAddingTeamIndex(null)} /></Modal>}
   </>
 }
