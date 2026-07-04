@@ -1,3 +1,5 @@
+import { isValidCabin, normalizeCabin } from './cabins.js'
+
 const normalize = (value) => String(value || '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -67,15 +69,15 @@ export function parseCampersFile(text) {
     if (!name) return
 
     const lastName = (row[columns.lastName] || '').trim()
-    const cabin = hasCabin ? (row[columns.cabin] || '').trim() : ''
+    const cabin = hasCabin ? normalizeCabin(row[columns.cabin]) : ''
     const age = Number(row[columns.age])
     const scores = hasScores
       ? Object.fromEntries(scoreKeys.map((key) => [key, Number(row[columns[key]])]))
       : Object.fromEntries(scoreKeys.map((key) => [key, 0]))
 
     const hasInvalidScore = hasScores && Object.values(scores).some((score) => !Number.isInteger(score) || score < 0 || score > 5)
-    if (lastName.length < 2 || !Number.isInteger(age) || age < 5 || age > 20 || hasInvalidScore) {
-      errors.push(`Fila ${rowIndex + 2}: revisa apellido, edad${hasScores ? ' y notas (las notas deben ser enteros del 0 al 5)' : ''}.`)
+    if (lastName.length < 2 || !Number.isInteger(age) || age < 5 || age > 20 || hasInvalidScore || (hasCabin && !isValidCabin(cabin))) {
+      errors.push(`Fila ${rowIndex + 2}: revisa apellido, edad, cabaña${hasScores ? ' y notas (las notas deben ser enteros del 0 al 5)' : ''}.`)
       return
     }
 

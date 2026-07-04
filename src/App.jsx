@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Download, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Plus, RefreshCw, Search, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
 import { balanceCampers, getBalanceScore, teamAverages } from './balance'
+import { CABIN_OPTIONS, isValidCabin, normalizeCabin } from './cabins.js'
 import { BALANCE_DIMENSIONS, DEMO_CAMPERS, SKILLS, TRIBES } from './data'
 import { parseCampersFile } from './importers'
 import { getDeviceId, isRemoteSyncConfigured, readLocalSnapshot, readRemoteSnapshot, saveLocalSnapshot, writeRemoteSnapshot } from './syncStore'
@@ -11,6 +12,7 @@ const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camp
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
 const fullName = (camper) => [camper.name, camper.lastName].filter(Boolean).join(' ')
 const normalizeIdentity = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ')
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 const matchesCamperQuery = (camper, query) => {
   const tokens = normalizeIdentity(query).split(' ').filter(Boolean)
   if (!tokens.length) return true
@@ -185,16 +187,17 @@ function CamperForm({ camper, onSave, onClose }) {
     event.preventDefault()
     const name = form.name.trim()
     const lastName = form.lastName.trim()
-    const cabin = form.cabin.trim().toUpperCase()
+    const cabin = normalizeCabin(form.cabin)
     const age = Number(form.age)
     if (name.length < 2) return setError('Escribe el nombre del campista.')
     if (lastName.length < 2) return setError('Escribe el apellido del campista.')
     if (!Number.isInteger(age) || age < 5 || age > 20) return setError('La edad debe estar entre 5 y 20 años.')
+    if (!isValidCabin(cabin)) return setError('La cabaña debe ser B1-B12, S1-S16, CIT 1, CIT 2, AV 1 o AV 2.')
     onSave({ ...form, name, lastName, age, cabin })
   }
   return <form onSubmit={submit}>
     <div className="modal-heading"><div><span className="eyebrow">Ficha de evaluación</span><h2>{camper ? 'Editar campista' : 'Nuevo campista'}</h2><p>Registra sus datos y califica cada aptitud.</p></div><button className="icon-button" type="button" onClick={onClose}><X size={20} /></button></div>
-    <div className="form-grid camper-form-grid"><label className="field"><span>Nombre</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. Sofía" /></label><label className="field"><span>Apellido</span><input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} placeholder="Ej. Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>años</small></div></label><label className="field"><span>Cabaña</span><input value={form.cabin} onChange={(event) => setForm({ ...form, cabin: event.target.value })} placeholder="Ej. S12" /></label></div>
+    <div className="form-grid camper-form-grid"><label className="field"><span>Nombre</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. Sofía" /></label><label className="field"><span>Apellido</span><input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} placeholder="Ej. Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>años</small></div></label><label className="field"><span>Cabaña</span><select value={normalizeCabin(form.cabin)} onChange={(event) => setForm({ ...form, cabin: event.target.value })}><option value="">Sin cabaña</option>{CABIN_OPTIONS.map((cabinOption) => <option key={cabinOption} value={cabinOption}>{cabinOption}</option>)}</select></label></div>
     <div className="skills-form"><div className="skills-title"><strong>Aptitudes</strong><span>0 = no observado · 5 = sobresaliente</span></div>{SKILLS.map(({ key, label, icon }) => <div className="skill-row" key={key}><div className="skill-name"><span>{icon}</span><strong>{label}</strong></div><Rating label={label} value={form[key]} onChange={(value) => setForm({ ...form, [key]: value })} /></div>)}</div>
     {error && <p className="form-error">{error}</p>}
     <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" type="submit"><Check size={18} /> {camper ? 'Guardar cambios' : 'Agregar campista'}</button></div>
@@ -208,18 +211,19 @@ function TribeCamperForm({ teams, initialTeamIndex = 0, onSave, onClose }) {
     event.preventDefault()
     const name = form.name.trim()
     const lastName = form.lastName.trim()
-    const cabin = form.cabin.trim().toUpperCase()
+    const cabin = normalizeCabin(form.cabin)
     const age = Number(form.age)
     const teamIndex = Number(form.teamIndex)
     if (name.length < 2) return setError('Escribe el nombre del campista.')
     if (lastName.length < 2) return setError('Escribe el apellido del campista.')
     if (!Number.isInteger(age) || age < 5 || age > 20) return setError('La edad debe estar entre 5 y 20 aÃ±os.')
+    if (!isValidCabin(cabin)) return setError('La cabaña debe ser B1-B12, S1-S16, CIT 1, CIT 2, AV 1 o AV 2.')
     if (!Number.isInteger(teamIndex) || !teams[teamIndex]) return setError('Selecciona una tribu vÃ¡lida.')
     onSave({ ...form, name, lastName, age, cabin }, teamIndex)
   }
   return <form onSubmit={submit}>
     <div className="modal-heading"><div><span className="eyebrow">Agregar desde tribus</span><h2>Nuevo campista</h2><p>Registra sus datos, aptitudes y la tribu donde debe quedar.</p></div><button className="icon-button" type="button" onClick={onClose}><X size={20} /></button></div>
-    <div className="form-grid tribe-add-grid"><label className="field"><span>Nombre</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. SofÃ­a" /></label><label className="field"><span>Apellido</span><input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} placeholder="Ej. Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>aÃ±os</small></div></label><label className="field"><span>CabaÃ±a</span><input value={form.cabin} onChange={(event) => setForm({ ...form, cabin: event.target.value })} placeholder="Ej. S12" /></label><label className="field full-span"><span>Tribu</span><select value={form.teamIndex} onChange={(event) => setForm({ ...form, teamIndex: Number(event.target.value) })}>{teams.map((team, index) => <option key={team.name} value={index}>{team.name}</option>)}</select></label></div>
+    <div className="form-grid tribe-add-grid"><label className="field"><span>Nombre</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. SofÃ­a" /></label><label className="field"><span>Apellido</span><input value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} placeholder="Ej. Herrera" /></label><label className="field"><span>Edad</span><div className="input-suffix"><input type="number" min="5" max="20" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} placeholder="12" /><small>aÃ±os</small></div></label><label className="field"><span>CabaÃ±a</span><select value={normalizeCabin(form.cabin)} onChange={(event) => setForm({ ...form, cabin: event.target.value })}><option value="">Sin cabaña</option>{CABIN_OPTIONS.map((cabinOption) => <option key={cabinOption} value={cabinOption}>{cabinOption}</option>)}</select></label><label className="field full-span"><span>Tribu</span><select value={form.teamIndex} onChange={(event) => setForm({ ...form, teamIndex: Number(event.target.value) })}>{teams.map((team, index) => <option key={team.name} value={index}>{team.name}</option>)}</select></label></div>
     <div className="skills-form"><div className="skills-title"><strong>Aptitudes</strong><span>0 = no observado Â· 5 = sobresaliente</span></div>{SKILLS.map(({ key, label, icon }) => <div className="skill-row" key={key}><div className="skill-name"><span>{icon}</span><strong>{label}</strong></div><Rating label={label} value={form[key]} onChange={(value) => setForm({ ...form, [key]: value })} /></div>)}</div>
     {error && <p className="form-error">{error}</p>}
     <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" type="submit"><Plus size={18} /> Agregar a tribu</button></div>
@@ -322,7 +326,22 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
     })
     return { added, updated, duplicates: duplicateDetails.length, duplicateDetails }
   }
-  const addDemo = () => setCampers(DEMO_CAMPERS.map(([fullDemoName, age, strength, speed, wit, creativity, leadership], index) => { const [name, ...lastNameParts] = fullDemoName.split(' '); return { id: crypto.randomUUID(), name, lastName: lastNameParts.join(' '), age, cabin: `${index % 2 ? 'K' : 'S'}${(index % 12) + 1}`, strength, speed, wit, creativity, leadership } }))
+  const addDemo = () => setCampers(Array.from({ length: 300 }, (_, index) => {
+    const [fullDemoName] = DEMO_CAMPERS[index % DEMO_CAMPERS.length]
+    const [name, ...lastNameParts] = fullDemoName.split(' ')
+    return {
+      id: crypto.randomUUID(),
+      name,
+      lastName: lastNameParts.join(' '),
+      age: randomInt(6, 16),
+      cabin: CABIN_OPTIONS[index % CABIN_OPTIONS.length],
+      strength: randomInt(0, 5),
+      speed: randomInt(0, 5),
+      wit: randomInt(0, 5),
+      creativity: randomInt(0, 5),
+      leadership: randomInt(0, 5),
+    }
+  }))
   const deleteAll = () => {
     if (window.confirm('¿Seguro que quieres eliminar TODOS los registros de campistas? Esta acción también limpia la distribución actual de tribus.')) setCampers([])
   }
