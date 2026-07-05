@@ -236,9 +236,11 @@ function ImportZone({ onImport }) {
   const [dragging, setDragging] = useState(false)
   const [notice, setNotice] = useState(null)
   const [duplicateDetails, setDuplicateDetails] = useState([])
+  const [showDuplicates, setShowDuplicates] = useState(true)
   const load = async (file) => {
     if (!file) return
     setDuplicateDetails([])
+    setShowDuplicates(true)
     const extension = file.name.split('.').pop().toLowerCase()
     if (extension === 'pdf') {
       setNotice({ type: 'warning', text: 'La hoja escaneada puede conservarse como respaldo, pero la letra manuscrita no se importa con suficiente seguridad. Transcribe las notas o exporta la hoja digital como CSV.' })
@@ -253,6 +255,7 @@ function ImportZone({ onImport }) {
       const errors = parsed.errors
       const { added, updated, duplicates, duplicateDetails: detailRows } = onImport(parsed)
       setDuplicateDetails(detailRows)
+      setShowDuplicates(true)
       const details = [errors.length ? `${errors.length} fila(s) con errores` : '', duplicates ? `${duplicates} duplicado(s)` : ''].filter(Boolean).join(' · ')
       setNotice({ type: added || updated ? 'success' : 'warning', text: `${added} campista(s) nuevo(s), ${updated} actualizado(s)${details ? `. ${details}.` : '.'}` })
     } catch (error) {
@@ -266,7 +269,7 @@ function ImportZone({ onImport }) {
     </label>
     <div className="paper-note"><AlertTriangle size={17} /><span><strong>¿Usan la hoja impresa?</strong> Sí. Los evaluadores pueden llenarla en papel; después se transcribe o se carga el CSV. No es obligatorio usar el teléfono.</span></div>
     {notice && <div className={`import-notice ${notice.type}`}><span>{notice.text}</span><button onClick={() => setNotice(null)} aria-label="Cerrar"><X size={15} /></button></div>}
-    {duplicateDetails.length > 0 && <div className="duplicate-report"><div><strong>Duplicados detectados</strong><button type="button" onClick={() => navigator.clipboard?.writeText(duplicateDetails.map(({ reason, camper }) => `${reason}: ${fullName(camper)} · ${camper.age} años · Cabaña ${camper.cabin || '—'}`).join('\n'))}>Copiar lista</button></div><ul>{duplicateDetails.map(({ key, reason, camper }) => <li key={key}><span>{reason}</span><strong>{fullName(camper)}</strong><small>{camper.age} años · Cabaña {camper.cabin || '—'}</small></li>)}</ul></div>}
+    {duplicateDetails.length > 0 && <div className={`duplicate-report ${showDuplicates ? '' : 'collapsed'}`}><div><button type="button" className="duplicate-toggle" onClick={() => setShowDuplicates(!showDuplicates)}><strong>Duplicados detectados</strong><span>{duplicateDetails.length} registro(s) {showDuplicates ? 'visibles' : 'ocultos'}</span></button><div className="duplicate-actions"><button type="button" onClick={() => navigator.clipboard?.writeText(duplicateDetails.map(({ reason, camper }) => `${reason}: ${fullName(camper)} · ${camper.age} años · Cabaña ${camper.cabin || '—'}`).join('\n'))}>Copiar lista</button><button type="button" onClick={() => setShowDuplicates(!showDuplicates)}>{showDuplicates ? 'Contraer' : 'Mostrar'}</button><button type="button" onClick={() => setDuplicateDetails([])}>Ocultar</button></div></div>{showDuplicates && <ul>{duplicateDetails.map(({ key, reason, camper }) => <li key={key}><span>{reason}</span><strong>{fullName(camper)}</strong><small>{camper.age} años · Cabaña {camper.cabin || '—'}</small></li>)}</ul>}</div>}
   </div>
 }
 
