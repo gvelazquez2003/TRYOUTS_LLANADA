@@ -5,6 +5,8 @@ export const CABIN_OPTIONS = [
   'CIT 2',
   'AV 1',
   'AV 2',
+  'AV 3',
+  'AV 4',
 ]
 
 const normalizedCabins = new Map(CABIN_OPTIONS.map((cabin) => [cabin.replace(/\s+/g, ''), cabin]))
@@ -15,7 +17,7 @@ export function normalizeCabin(value) {
   const compact = raw.replace(/\s+/g, '')
   const bunkMatch = compact.match(/^([BS])0?(\d+)$/)
   if (bunkMatch) return normalizedCabins.get(`${bunkMatch[1]}${Number(bunkMatch[2])}`) || raw
-  const staffMatch = compact.match(/^(CIT|AV)0?([12])$/)
+  const staffMatch = compact.match(/^(CIT|AV)0?([1-4])$/)
   if (staffMatch) return normalizedCabins.get(`${staffMatch[1]}${staffMatch[2]}`) || raw
   return normalizedCabins.get(compact) || raw
 }
@@ -23,4 +25,11 @@ export function normalizeCabin(value) {
 export function isValidCabin(value) {
   const cabin = normalizeCabin(value)
   return !cabin || CABIN_OPTIONS.includes(cabin)
+}
+
+export function getCabinSide(value) {
+  const cabin = normalizeCabin(value)
+  const number = Number(cabin.match(/\d+$/)?.[0])
+  if (!number) return null
+  return number % 2 === 0 ? 'pares' : 'impares'
 }

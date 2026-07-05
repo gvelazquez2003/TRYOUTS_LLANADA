@@ -135,6 +135,9 @@ header { height: 82px; }
 .cabin-export-bar .field { flex: 1 1 230px; }
 .cabin-export-bar > span { color: #7b6842; font-size: 12px; white-space: nowrap; padding-bottom: 12px; }
 .cabin-export-bar > button:not(.button) { border: 0; border-radius: 999px; background: #f0e6cc; color: #7a5b1f; padding: 8px 11px; font-size: 11px; font-weight: 800; cursor: pointer; margin-bottom: 4px; }
+.side-buttons { display: flex; gap: 7px; padding-bottom: 4px; }
+.side-buttons button { border: 1px solid #d8ddd5; border-radius: 999px; background: #fff; color: var(--green); padding: 10px 14px; font-size: 12px; font-weight: 900; cursor: pointer; }
+.side-buttons button.active { background: var(--green); border-color: var(--green); color: #fff; }
 .tribe-add-row { margin: -6px 0 18px; display: flex; justify-content: flex-end; }
 .tribe-filter-empty { margin: -5px 0 18px; }
 .modal-filter-note { margin: -8px 0 14px; padding: 9px 11px; border-radius: 10px; background: #f1f4ee; color: #63766d; display: flex; align-items: center; gap: 7px; font-size: 12px; }
@@ -176,6 +179,8 @@ header { height: 82px; }
   .cabin-export-bar .field { flex-basis: auto; }
   .cabin-export-bar > span { white-space: normal; padding-bottom: 0; }
   .cabin-export-bar .button { width: 100%; justify-content: center; }
+  .side-buttons { padding-bottom: 0; }
+  .side-buttons button { flex: 1; }
   .tribe-add-row { justify-content: stretch; }
   .tribe-add-row .button { width: 100%; }
 }

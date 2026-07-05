@@ -1,4 +1,5 @@
 import { BALANCE_DIMENSIONS, SKILLS, TRIBES } from './data.js'
+import { getCabinSide } from './cabins.js'
 
 const camperVector = (camper) => BALANCE_DIMENSIONS.map(({ key }) => camper[key])
 const sum = (values) => values.reduce((total, value) => total + value, 0)
@@ -12,6 +13,23 @@ function shuffle(values) {
     ;[copy[i], copy[j]] = [copy[j], copy[i]]
   }
   return copy
+}
+
+function addCapacity(capacities, teamIndexes, count) {
+  if (!teamIndexes.length || !count) return
+  const baseSize = Math.floor(count / teamIndexes.length)
+  const extra = count % teamIndexes.length
+  teamIndexes.forEach((index) => { capacities[index] += baseSize })
+  shuffle(teamIndexes).slice(0, extra).forEach((index) => { capacities[index] += 1 })
+}
+
+function sideCapacities(campers) {
+  const capacities = Array(TRIBES.length).fill(0)
+  ;['pares', 'impares'].forEach((side) => {
+    addCapacity(capacities, TRIBES.map((tribe, index) => (tribe.side === side ? index : null)).filter((index) => index !== null), campers.filter((camper) => getCabinSide(camper.cabin) === side).length)
+  })
+  addCapacity(capacities, TRIBES.map((_, index) => index), campers.filter((camper) => !getCabinSide(camper.cabin)).length)
+  return capacities
 }
 
 function evaluate(teams, globalAverage, ranges) {
@@ -37,21 +55,18 @@ export function balanceCampers(campers) {
     const values = vectors.map((vector) => vector[index])
     return Math.max(Math.max(...values) - Math.min(...values), 1)
   })
-  const baseSize = Math.floor(campers.length / TRIBES.length)
-  const extra = campers.length % TRIBES.length
   let best = null
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const capacityOrder = shuffle(TRIBES.map((_, index) => index))
-    const capacities = Array(TRIBES.length).fill(baseSize)
-    capacityOrder.slice(0, extra).forEach((index) => { capacities[index] += 1 })
+    const capacities = sideCapacities(campers)
     const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index] }))
     const order = campers
       .map((camper, index) => ({ camper, vector: vectors[index], distance: sum(vectors[index].map((value, dimension) => normalizedWeights[dimension] * ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.008 }))
       .sort((a, b) => b.distance - a.distance)
 
     order.forEach(({ camper, vector }) => {
-      const candidates = teams.filter((team) => team.members.length < team.capacity)
+      const camperSide = getCabinSide(camper.cabin)
+      const candidates = teams.filter((team) => team.members.length < team.capacity && (!camperSide || team.side === camperSide))
       let chosen = candidates[0]
       let chosenCost = Number.POSITIVE_INFINITY
       candidates.forEach((team) => {
@@ -70,7 +85,7 @@ export function balanceCampers(campers) {
     if (!best || score < best.score) best = { score, teams }
   }
 
-  return best.teams.map(({ name, flagCode, flagUrl, color, members }) => ({ name, flagCode, flagUrl, color, members }))
+  return best.teams.map(({ name, flagCode, flagUrl, color, side, members }) => ({ name, flagCode, flagUrl, color, side, members }))
 }
 
 export function getBalanceScore(teams, campers) {
