@@ -103,6 +103,7 @@ header { height: 82px; }
 .preload-note strong { color: var(--green); }
 .import-notice { margin-top: 11px; padding: 9px 11px; border-radius: 9px; display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
 .import-notice.success { background: #e4f1e6; color: #286445; }
+.import-notice.info { background: #e8f0f6; color: #2f5f7a; }
 .import-notice.warning { background: #fbefd7; color: #815e1f; }
 .import-notice.error { background: #f9e5e1; color: #9b4335; }
 .import-notice button { border: 0; background: transparent; color: currentColor; padding: 0; }
