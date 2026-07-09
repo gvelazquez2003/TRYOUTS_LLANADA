@@ -69,19 +69,23 @@ export function parseCampersFile(text) {
     if (!name) return
 
     const lastName = (row[columns.lastName] || '').trim()
-    const cabin = hasCabin ? normalizeCabin(row[columns.cabin]) : ''
+    const rawCabin = hasCabin ? (row[columns.cabin] || '').trim() : ''
+    const cabin = hasCabin ? normalizeCabin(rawCabin) : ''
+    const invalidCabin = hasCabin && rawCabin && !isValidCabin(cabin)
     const age = Number(row[columns.age])
     const scores = hasScores
       ? Object.fromEntries(scoreKeys.map((key) => [key, Number(row[columns[key]])]))
       : Object.fromEntries(scoreKeys.map((key) => [key, 0]))
 
     const hasInvalidScore = hasScores && Object.values(scores).some((score) => !Number.isInteger(score) || score < 0 || score > 5)
-    if (lastName.length < 2 || !Number.isInteger(age) || age < 5 || age > 20 || hasInvalidScore || (hasCabin && !isValidCabin(cabin))) {
-      errors.push(`Fila ${rowIndex + 2}: revisa apellido, edad, cabaña${hasScores ? ' y notas (las notas deben ser enteros del 0 al 5)' : ''}.`)
+    if (lastName.length < 2 || !Number.isInteger(age) || age < 5 || age > 20 || hasInvalidScore) {
+      errors.push(`Fila ${rowIndex + 2}: revisa apellido, edad${hasScores ? ' y notas (las notas deben ser enteros del 0 al 5)' : ''}.`)
       return
     }
 
-    campers.push({ name, lastName, age, cabin, ...scores })
+    if (invalidCabin) errors.push(`Fila ${rowIndex + 2}: la cabaña "${rawCabin}" no cumple el formato permitido y se cargó vacía.`)
+
+    campers.push({ name, lastName, age, cabin: invalidCabin ? '' : cabin, ...scores })
   })
 
   return { campers, errors, hasCabin, hasScores }
