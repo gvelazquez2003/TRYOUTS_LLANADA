@@ -10,13 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tesseract.js-data/eng": "^1.0.0",
     "@vitejs/plugin-react": "latest",
-    "lucide-react": "latest",
+    "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "tesseract.js": "^7.0.0",
-    "vite": "latest"
+    "lucide-react": "latest"
   },
   "devDependencies": {
     "@eslint/js": "latest",

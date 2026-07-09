@@ -4,7 +4,6 @@ import { balanceCampers, getBalanceScore, teamAverages } from './balance'
 import { CABIN_OPTIONS, isValidCabin, normalizeCabin } from './cabins.js'
 import { BALANCE_DIMENSIONS, DEMO_CAMPERS, SKILLS, TRIBES } from './data'
 import { parseCampersFile } from './importers'
-import { parseTryoutsImageFile } from './ocr.js'
 import { getDeviceId, isRemoteSyncConfigured, readLocalSnapshot, readRemoteSnapshot, saveLocalSnapshot, writeRemoteSnapshot } from './syncStore'
 import llanadaLogo from './assets/lllg-logo.png'
 
@@ -241,35 +240,12 @@ function ImportZone({ onImport }) {
     setDuplicateDetails([])
     setShowDuplicates(true)
     const extension = file.name.split('.').pop().toLowerCase()
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff']
     if (extension === 'pdf') {
-      setNotice({ type: 'warning', text: 'Para lectura automática sube la hoja como foto o escaneo en JPG, PNG o WebP. El OCR local no procesa PDF directamente.' })
-      return
-    }
-    if (imageExtensions.includes(extension) || file.type.startsWith('image/')) {
-      try {
-        setNotice({ type: 'info', text: 'Leyendo foto con OCR local. Puede tardar unos segundos...' })
-        const parsed = await parseTryoutsImageFile(file, ({ progress, status }) => {
-          const percent = progress === null ? '' : ` ${progress}%`
-          setNotice({ type: 'info', text: `Leyendo foto con OCR local:${percent} · ${status}` })
-        })
-        const { added, updated, duplicates, duplicateDetails: detailRows } = onImport(parsed)
-        setDuplicateDetails(detailRows)
-        setShowDuplicates(true)
-        const details = [
-          parsed.errors.length ? `${parsed.errors.length} fila(s) para revisar` : '',
-          duplicates ? `${duplicates} duplicado(s)` : '',
-          parsed.confidence ? `confianza OCR ${parsed.confidence}%` : '',
-        ].filter(Boolean).join(' · ')
-        const firstError = parsed.errors[0] ? ` Primera revisión: ${parsed.errors[0]}` : ''
-        setNotice({ type: added || updated ? (parsed.errors.length ? 'warning' : 'success') : 'warning', text: `${added} campista(s) nuevo(s), ${updated} actualizado(s) desde la foto${details ? `. ${details}.` : '.'}${firstError}` })
-      } catch (error) {
-        setNotice({ type: 'error', text: `No pude leer la foto: ${error.message}` })
-      }
+      setNotice({ type: 'warning', text: 'La hoja escaneada puede conservarse como respaldo, pero la letra manuscrita no se importa con suficiente seguridad. Transcribe las notas o exporta la hoja digital como CSV.' })
       return
     }
     if (!['csv', 'txt'].includes(extension)) {
-      setNotice({ type: 'error', text: 'Carga un CSV UTF-8 o una foto/escaneo de la hoja en JPG, PNG o WebP.' })
+      setNotice({ type: 'error', text: 'Exporta el archivo de Excel como CSV UTF-8 antes de cargarlo.' })
       return
     }
     try {
@@ -286,10 +262,10 @@ function ImportZone({ onImport }) {
   }
   return <div className="import-block">
     <label className={`drop-zone ${dragging ? 'dragging' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); load(event.dataTransfer.files[0]) }}>
-      <input type="file" accept=".csv,.txt,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/*" onChange={(event) => { load(event.target.files[0]); event.target.value = '' }} />
-      <span className="drop-icon"><UploadCloud size={23} /></span><span><strong>Arrastra aquí la lista de campistas</strong><small>CSV o foto/escaneo de la hoja impresa con nombre, edad, cabaña y aptitudes</small></span><span className="button secondary compact"><FileSpreadsheet size={16} /> Elegir archivo</span>
+      <input type="file" accept=".csv,.txt,.pdf,.xlsx" onChange={(event) => { load(event.target.files[0]); event.target.value = '' }} />
+      <span className="drop-icon"><UploadCloud size={23} /></span><span><strong>Arrastra aquí la lista de campistas</strong><small>CSV con Nombre, Apellido, Edad, Cabaña, Fuerza, Velocidad, Inteligencia, Creatividad y Liderazgo</small></span><span className="button secondary compact"><FileSpreadsheet size={16} /> Elegir archivo</span>
     </label>
-    <div className="paper-note"><AlertTriangle size={17} /><span><strong>¿Usan la hoja impresa?</strong> Sí. Ahora puedes subir una foto/escaneo para lectura automática; si alguna fila queda dudosa, la app la reporta para revisión.</span></div>
+    <div className="paper-note"><AlertTriangle size={17} /><span><strong>¿Usan la hoja impresa?</strong> Sí. Los evaluadores pueden llenarla en papel; después se transcribe o se carga el CSV. No es obligatorio usar el teléfono.</span></div>
     {notice && <div className={`import-notice ${notice.type}`}><span>{notice.text}</span><button onClick={() => setNotice(null)} aria-label="Cerrar"><X size={15} /></button></div>}
     {duplicateDetails.length > 0 && <div className={`duplicate-report ${showDuplicates ? '' : 'collapsed'}`}><div><button type="button" className="duplicate-toggle" onClick={() => setShowDuplicates(!showDuplicates)}><strong>Duplicados detectados</strong><span>{duplicateDetails.length} registro(s) {showDuplicates ? 'visibles' : 'ocultos'}</span></button><div className="duplicate-actions"><button type="button" onClick={() => navigator.clipboard?.writeText(duplicateDetails.map(({ reason, camper }) => `${reason}: ${fullName(camper)} · ${camper.age} años · Cabaña ${camper.cabin || '—'}`).join('\n'))}>Copiar lista</button><button type="button" onClick={() => setShowDuplicates(!showDuplicates)}>{showDuplicates ? 'Contraer' : 'Mostrar'}</button><button type="button" onClick={() => setDuplicateDetails([])}>Ocultar</button></div></div>{showDuplicates && <ul>{duplicateDetails.map(({ key, reason, camper }) => <li key={key}><span>{reason}</span><strong>{fullName(camper)}</strong><small>{camper.age} años · Cabaña {camper.cabin || '—'}</small></li>)}</ul>}</div>}
   </div>
