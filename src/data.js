@@ -7,8 +7,8 @@ export const SKILLS = [
 ]
 
 export const GENDER_OPTIONS = [
-  { value: 'male', label: 'Hombres' },
-  { value: 'female', label: 'Niñas' },
+  { value: 'male', label: 'M' },
+  { value: 'female', label: 'F' },
 ]
 
 export function normalizeGender(value) {
@@ -23,7 +23,7 @@ export function normalizeGender(value) {
 }
 
 export function genderLabel(value) {
-  return GENDER_OPTIONS.find((option) => option.value === value)?.label || 'Sin género'
+  return GENDER_OPTIONS.find((option) => option.value === value)?.label || '—'
 }
 
 // Pesos de balance definidos para el contexto del campamento.
