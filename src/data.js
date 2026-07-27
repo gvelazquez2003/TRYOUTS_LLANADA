@@ -39,14 +39,14 @@ export const BALANCE_DIMENSIONS = [
 ]
 
 export const TRIBES = [
-  ['Alemania', 'de', '#2d3648', 'pares'], ['Francia', 'fr', '#3155a4', 'impares'],
-  ['Holanda', 'nl', '#e56b35', 'pares'], ['Portugal', 'pt', '#167a53', 'impares'],
-  ['Colombia', 'co', '#d4a91c', 'pares'], ['México', 'mx', '#1f875d', 'impares'],
-  ['Noruega', 'no', '#c33b4e', 'pares'], ['Bélgica', 'be', '#d9a827', 'impares'],
-  ['Argentina', 'ar', '#53a7c7', 'pares'], ['Brasil', 'br', '#30934b', 'impares'],
-  ['Japón', 'jp', '#d64b5c', 'pares'], ['Inglaterra', 'gb-eng', '#a83f47', 'impares'],
-  ['Estados Unidos', 'us', '#3c5a96', 'pares'], ['España', 'es', '#c9473b', 'pares'],
-  ['Canadá', 'ca', '#d44848', 'impares'], ['Uruguay', 'uy', '#428ebd', 'impares'],
+  ['Alemania', 'de', '#2d3648', 'impares'], ['Francia', 'fr', '#3155a4', 'impares'],
+  ['Holanda', 'nl', '#e56b35', 'impares'], ['Portugal', 'pt', '#167a53', 'pares'],
+  ['Colombia', 'co', '#d4a91c', 'pares'], ['México', 'mx', '#1f875d', 'pares'],
+  ['Noruega', 'no', '#c33b4e', 'pares'], ['Bélgica', 'be', '#d9a827', 'pares'],
+  ['Argentina', 'ar', '#53a7c7', 'impares'], ['Brasil', 'br', '#30934b', 'impares'],
+  ['Japón', 'jp', '#d64b5c', 'impares'], ['Inglaterra', 'gb-eng', '#a83f47', 'pares'],
+  ['Estados Unidos', 'us', '#3c5a96', 'impares'], ['España', 'es', '#c9473b', 'pares'],
+  ['Canadá', 'ca', '#d44848', 'impares'], ['Uruguay', 'uy', '#428ebd', 'pares'],
 ].map(([name, flagCode, color, side]) => ({ name, flagCode, flagUrl: `https://flagcdn.com/w80/${flagCode}.png`, color, side }))
 
 export const DEMO_CAMPERS = [
