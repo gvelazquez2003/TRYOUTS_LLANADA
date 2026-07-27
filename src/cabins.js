@@ -5,6 +5,8 @@ export const CABIN_OPTIONS = [
   'CIT 2',
   'CIT 3',
   'CIT 4',
+  'CIT 5',
+  'CIT 6',
   'AV 1',
   'AV 2',
   'AV 3',
