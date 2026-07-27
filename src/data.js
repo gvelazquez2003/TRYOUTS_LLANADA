@@ -6,16 +6,36 @@ export const SKILLS = [
   { key: 'leadership', label: 'Liderazgo', icon: '🏅' },
 ]
 
+export const GENDER_OPTIONS = [
+  { value: 'male', label: 'Hombres' },
+  { value: 'female', label: 'Niñas' },
+]
+
+export function normalizeGender(value) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+  if (['h', 'm', 'masculino', 'hombre', 'hombres', 'nino', 'niño', 'varon', 'varones'].includes(normalized)) return 'male'
+  if (['f', 'femenino', 'mujer', 'mujeres', 'nina', 'niña'].includes(normalized)) return 'female'
+  return ''
+}
+
+export function genderLabel(value) {
+  return GENDER_OPTIONS.find((option) => option.value === value)?.label || 'Sin género'
+}
+
 // Pesos de balance definidos para el contexto del campamento.
-// Edad + Velocidad = 50%, Liderazgo = 20%, Fuerza = 20%,
-// Creatividad = 5%, Inteligencia = 5%.
+// Edad + Velocidad = 40%, Liderazgo = 20%, Fuerza = 20%,
+// Creatividad = 10%, Inteligencia = 10%.
 export const BALANCE_DIMENSIONS = [
-  { key: 'age', label: 'Edad', weight: 25 },
-  { key: 'speed', label: 'Velocidad', weight: 25 },
+  { key: 'age', label: 'Edad', weight: 20 },
+  { key: 'speed', label: 'Velocidad', weight: 20 },
   { key: 'leadership', label: 'Liderazgo', weight: 20 },
   { key: 'strength', label: 'Fuerza', weight: 20 },
-  { key: 'creativity', label: 'Creatividad', weight: 5 },
-  { key: 'wit', label: 'Inteligencia', weight: 5 },
+  { key: 'creativity', label: 'Creatividad', weight: 10 },
+  { key: 'wit', label: 'Inteligencia', weight: 10 },
 ]
 
 export const TRIBES = [

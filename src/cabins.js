@@ -33,3 +33,21 @@ export function getCabinSide(value) {
   if (!number) return null
   return number % 2 === 0 ? 'pares' : 'impares'
 }
+
+export function getCabinProgram(value) {
+  const cabin = normalizeCabin(value)
+  if (cabin.startsWith('B')) return 'bosque'
+  if (cabin.startsWith('S')) return 'sabana'
+  if (cabin.startsWith('AV')) return 'aventura'
+  if (cabin.startsWith('CIT')) return 'cit'
+  return ''
+}
+
+export function programLabel(value) {
+  return {
+    bosque: 'Bosque',
+    sabana: 'Sabana',
+    aventura: 'Aventura',
+    cit: 'CIT',
+  }[value] || 'Sin programa'
+}

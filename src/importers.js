@@ -1,4 +1,5 @@
 import { isValidCabin, normalizeCabin } from './cabins.js'
+import { normalizeGender } from './data.js'
 
 const normalize = (value) => String(value || '')
   .normalize('NFD')
@@ -10,6 +11,7 @@ const aliases = {
   name: ['nombre', 'nombres', 'nombreyapellido', 'nombresyapellidos', 'campista', 'participante'],
   lastName: ['apellido', 'apellidos'],
   age: ['edad', 'anos'],
+  gender: ['genero', 'sexo', 'gender'],
   cabin: ['cabana', 'cabaa', 'cabanaid', 'cabin', 'cabanas', 'cabinas'],
   strength: ['fuerza'],
   speed: ['velocidad'],
@@ -61,6 +63,7 @@ export function parseCampersFile(text) {
 
   const hasScores = availableScoreColumns.length === scoreKeys.length
   const hasCabin = columns.cabin >= 0
+  const hasGender = columns.gender >= 0
   const campers = []
   const errors = []
 
@@ -69,6 +72,9 @@ export function parseCampersFile(text) {
     if (!name) return
 
     const lastName = (row[columns.lastName] || '').trim()
+    const rawGender = hasGender ? (row[columns.gender] || '').trim() : ''
+    const gender = hasGender ? normalizeGender(rawGender) : ''
+    const invalidGender = hasGender && rawGender && !gender
     const rawCabin = hasCabin ? (row[columns.cabin] || '').trim() : ''
     const cabin = hasCabin ? normalizeCabin(rawCabin) : ''
     const invalidCabin = hasCabin && rawCabin && !isValidCabin(cabin)
@@ -85,8 +91,10 @@ export function parseCampersFile(text) {
 
     if (invalidCabin) errors.push(`Fila ${rowIndex + 2}: la cabaña "${rawCabin}" no cumple el formato permitido y se cargó vacía.`)
 
-    campers.push({ name, lastName, age, cabin: invalidCabin ? '' : cabin, ...scores })
+    if (invalidGender) errors.push(`Fila ${rowIndex + 2}: el género "${rawGender}" no cumple M/F y se cargó vacío.`)
+
+    campers.push({ name, lastName, age, gender, cabin: invalidCabin ? '' : cabin, ...scores })
   })
 
-  return { campers, errors, hasCabin, hasScores }
+  return { campers, errors, hasCabin, hasScores, hasGender }
 }
