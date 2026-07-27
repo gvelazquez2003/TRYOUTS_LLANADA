@@ -8,6 +8,7 @@ import { getDeviceId, isRemoteSyncConfigured, readLocalSnapshot, readRemoteSnaps
 import llanadaLogo from './assets/lllg-logo.png'
 
 const emptyForm = { name: '', lastName: '', age: '', gender: '', cabin: '', ...Object.fromEntries(SKILLS.map(({ key }) => [key, 3])) }
+const MAX_TEAM_SIZE_DIFFERENCE = 2
 const camperAverage = (camper) => SKILLS.reduce((total, { key }) => total + camper[key], 0) / SKILLS.length
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((word) => word[0]).join('')
 const fullName = (camper) => [camper.name, camper.lastName].filter(Boolean).join(' ')
@@ -20,6 +21,7 @@ const matchesCamperQuery = (camper, query) => {
   return tokens.every((token) => searchable.includes(token))
 }
 const identityKey = ({ name = '', lastName = '', age = '', cabin = '' }, includeCabin = false) => [normalizeIdentity(name), normalizeIdentity(lastName), String(age).trim(), includeCabin ? normalizeIdentity(cabin) : ''].join('|')
+const teamSizeSpread = (rows) => rows.length ? Math.max(...rows.map((row) => row.length)) - Math.min(...rows.map((row) => row.length)) : 0
 const syncErrorStatus = (error) => {
   const message = error?.message || ''
   if (message.includes('(404)')) return { mode: 'error', label: 'Tabla sync no existe', detail: message }
@@ -34,6 +36,7 @@ const reconcileAssignments = (current, campers) => {
   const next = TRIBES.map((_, index) => (Array.isArray(current[index]) ? current[index] : []).filter((id) => validIds.has(id)))
   const assigned = new Set(next.flat())
   campers.filter(({ id }) => !assigned.has(id)).forEach(({ id }) => { const smallest = next.reduce((best, team, index) => team.length < next[best].length ? index : best, 0); next[smallest].push(id) })
+  if (teamSizeSpread(next) > MAX_TEAM_SIZE_DIFFERENCE) return balanceCampers(campers).map((team) => team.members.map(({ id }) => id))
   return next
 }
 const countCabinInTeam = (team, cabin) => cabin ? team?.members.filter((member) => member.cabin === cabin).length || 0 : 0
@@ -462,7 +465,7 @@ function Tribes({ campers, teams, generated, onGenerate, onMove, onAddCamper }) 
   }
   return <>
     <section className="tribes-hero"><div><span className="eyebrow"><LayoutGrid size={14} /> Módulo de distribución</span><h1>16 tribus.<br /><em>Un solo campamento.</em></h1><p>El algoritmo distribuye edades y aptitudes usando las prioridades definidas para el campamento.</p><div className="hero-actions"><button className="button primary" disabled={!campers.length} onClick={onGenerate}>{generated ? <RefreshCw size={18} /> : <Sparkles size={18} />}{generated ? 'Generar otra distribución' : 'Formar las tribus'}</button><span><CircleHelp size={16} /> {campers.length ? `${campers.length} campistas listos` : 'Primero registra campistas en Tryouts'}</span></div></div><div className="balance-preview"><div className="balance-ring" style={{ '--score': generated ? balance : 0 }}><strong>{generated ? `${balance}%` : '—'}</strong><small>equilibrio</small></div><div><span>Mayor prioridad</span><strong>Edad + Velocidad</strong><small>40% de la clasificación</small></div></div></section>
-    <section className="weights-panel"><div><span className="eyebrow">Criterios de balance</span><strong>Importancia relativa</strong></div><div className="weight-chips"><span>Edad + Velocidad <b>40%</b></span><span>Liderazgo <b>20%</b></span><span>Fuerza <b>20%</b></span><span>Creatividad <b>10%</b></span><span>Inteligencia <b>10%</b></span></div><small>También equilibramos cantidades por programa y género, con máximo 2 campistas de la misma cabaña por tribu.</small></section>
+    <section className="weights-panel"><div><span className="eyebrow">Criterios de balance</span><strong>Importancia relativa</strong></div><div className="weight-chips"><span>Edad + Velocidad <b>40%</b></span><span>Liderazgo <b>20%</b></span><span>Fuerza <b>20%</b></span><span>Creatividad <b>10%</b></span><span>Inteligencia <b>10%</b></span></div><small>También equilibramos cantidades por programa y género, con máximo 2 campistas de diferencia entre tribus y máximo 2 de la misma cabaña por tribu.</small></section>
     <section className="how-it-works"><span className="step"><b>1</b><span><strong>Leemos los perfiles</strong><small>Edad y aptitudes</small></span></span><ChevronRight /><span className="step"><b>2</b><span><strong>Aplicamos los pesos</strong><small>{BALANCE_DIMENSIONS.length} criterios</small></span></span><ChevronRight /><span className="step"><b>3</b><span><strong>Personalizas el resultado</strong><small>Cambios de último minuto</small></span></span></section>
     <section className="tribe-section"><div className="section-heading"><div><span className="eyebrow">Mapa de tribus</span><h2>{generated ? 'Distribución actual' : 'Las tribus del campamento'}</h2></div>{generated && <div className="result-legend"><span><i className="dot green-dot" /> Cambios manuales habilitados</span><span>Arrastra campistas entre tribus</span></div>}</div>
       {generated && <div className="customize-hint"><MoveRight size={18} /><span><strong>Esta distribución es editable.</strong> Abre una tribu para mover a un campista, o arrástralo directamente entre tarjetas.</span></div>}
@@ -590,6 +593,13 @@ export default function App() {
   const move = (memberId, sourceIndex, targetIndex) => {
     if (sourceIndex === targetIndex) return
     const camper = camperMap.get(memberId)
+    const projectedSizes = teams.map((team) => team.members.length)
+    projectedSizes[sourceIndex] -= 1
+    projectedSizes[targetIndex] += 1
+    if (Math.max(...projectedSizes) - Math.min(...projectedSizes) > MAX_TEAM_SIZE_DIFFERENCE) {
+      window.alert('Ese movimiento dejaría más de 2 campistas de diferencia entre tribus. Mueve primero a alguien hacia la tribu más pequeña.')
+      return
+    }
     if (camper?.cabin && countCabinInTeam(teams[targetIndex], camper.cabin) >= 2) {
       window.alert(`No puedes tener 3 campistas de la cabaña ${camper.cabin} en la misma tribu.`)
       return
@@ -597,6 +607,12 @@ export default function App() {
     setAssignments((current) => current.map((ids, index) => index === sourceIndex ? ids.filter((id) => id !== memberId) : index === targetIndex ? [...ids, memberId] : ids))
   }
   const addCamperToTeam = (camper, teamIndex) => {
+    const projectedSizes = teams.map((team) => team.members.length)
+    projectedSizes[teamIndex] += 1
+    if (Math.max(...projectedSizes) - Math.min(...projectedSizes) > MAX_TEAM_SIZE_DIFFERENCE) {
+      window.alert('Agrega este campista a una tribu con menos integrantes para mantener máximo 2 de diferencia.')
+      return
+    }
     if (camper.cabin && countCabinInTeam(teams[teamIndex], camper.cabin) >= 2) {
       window.alert(`No puedes tener 3 campistas de la cabaña ${camper.cabin} en la misma tribu.`)
       return

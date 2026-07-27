@@ -17,20 +17,13 @@ function shuffle(values) {
   return copy
 }
 
-function addCapacity(capacities, teamIndexes, count) {
-  if (!teamIndexes.length || !count) return
-  const baseSize = Math.floor(count / teamIndexes.length)
-  const extra = count % teamIndexes.length
-  teamIndexes.forEach((index) => { capacities[index] += baseSize })
-  shuffle(teamIndexes).slice(0, extra).forEach((index) => { capacities[index] += 1 })
-}
-
-function sideCapacities(campers) {
-  const capacities = Array(TRIBES.length).fill(0)
-  ;['pares', 'impares'].forEach((side) => {
-    addCapacity(capacities, TRIBES.map((tribe, index) => (tribe.side === side ? index : null)).filter((index) => index !== null), campers.filter((camper) => getCabinSide(camper.cabin) === side).length)
-  })
-  addCapacity(capacities, TRIBES.map((_, index) => index), campers.filter((camper) => !getCabinSide(camper.cabin)).length)
+function balancedCapacities(totalCampers) {
+  const baseSize = Math.floor(totalCampers / TRIBES.length)
+  const extra = totalCampers % TRIBES.length
+  const capacities = Array(TRIBES.length).fill(baseSize)
+  shuffle(Array.from({ length: TRIBES.length }, (_, index) => index))
+    .slice(0, extra)
+    .forEach((index) => { capacities[index] += 1 })
   return capacities
 }
 
@@ -112,7 +105,7 @@ export function balanceCampers(campers) {
   let best = null
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const capacities = sideCapacities(campers)
+    const capacities = balancedCapacities(campers.length)
     const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index], genderCounts: {}, programCounts: {}, cabinCounts: {} }))
     const order = campers
       .map((camper, index) => ({ camper, vector: vectors[index], distance: sum(vectors[index].map((value, dimension) => normalizedWeights[dimension] * ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.008 }))
@@ -122,9 +115,12 @@ export function balanceCampers(campers) {
       const camperSide = getCabinSide(camper.cabin)
       const sideCandidates = teams.filter((team) => !camperSide || team.side === camperSide)
       let candidates = sideCandidates.filter((team) => team.members.length < team.capacity && cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
-      if (!candidates.length) candidates = sideCandidates.filter((team) => cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
+      if (!candidates.length) candidates = teams.filter((team) => team.members.length < team.capacity && cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
       if (!candidates.length) candidates = sideCandidates.filter((team) => team.members.length < team.capacity)
-      if (!candidates.length) candidates = sideCandidates
+      if (!candidates.length) candidates = teams.filter((team) => team.members.length < team.capacity)
+      if (!candidates.length) candidates = sideCandidates.filter((team) => cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
+      if (!candidates.length) candidates = teams.filter((team) => cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
+      if (!candidates.length) candidates = teams
       let chosen = candidates[0]
       let chosenCost = Number.POSITIVE_INFINITY
       candidates.forEach((team) => {
@@ -134,7 +130,8 @@ export function balanceCampers(campers) {
         const mismatch = sum(projected.map((value, index) => normalizedWeights[index] * ((value - target[index]) / (ranges[index] * capacity)) ** 2))
         const fillBonus = team.members.length / Math.max(team.capacity, 1) * 0.018
         const cabinPenalty = camper.cabin && cabinCount(team, camper) ? 0.035 : 0
-        const cost = mismatch + categoricalCost(team, camper, globalProportions) + fillBonus + cabinPenalty + Math.random() * 0.001
+        const sidePenalty = camperSide && team.side !== camperSide ? 0.09 : 0
+        const cost = mismatch + categoricalCost(team, camper, globalProportions) + fillBonus + cabinPenalty + sidePenalty + Math.random() * 0.001
         if (cost < chosenCost) { chosen = team; chosenCost = cost }
       })
       addToTeam(chosen, camper, vector)
