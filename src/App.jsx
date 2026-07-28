@@ -77,7 +77,7 @@ async function readCsvText(file) {
 
 function downloadTribeSheet(team) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
-  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(genderLabel(member.gender))}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
+  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
   const html = `<!doctype html>
 <html lang="es">
 <head>
@@ -105,8 +105,8 @@ function downloadTribeSheet(team) {
     <div class="meta"><strong>Formación de Tribus</strong><br />${team.members.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
   </header>
   <table>
-    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Género</th><th>Cabaña</th><th>Programa</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="7">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
+    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
   </table>
   <div class="call-note"><strong>Nota para staff:</strong> llama a cada campista, verifica su cabaña y marca asistencia antes de iniciar la actividad.</div>
 </body>
@@ -125,7 +125,7 @@ function downloadTribeSheet(team) {
 function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const title = cabinFilter ? `Cabaña ${cabinFilter}` : groupFilter || 'Todas las cabañas'
-  const tableRows = rows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(genderLabel(camper.gender))}</td><td>${escapeHtml(camper.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(camper.cabin)))}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
+  const tableRows = rows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(camper.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(camper.cabin)))}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
   const html = `<!doctype html>
 <html lang="es">
 <head>
@@ -152,8 +152,8 @@ function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
     <div class="meta"><strong>Formación de Tribus</strong><br />${rows.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
   </header>
   <table>
-    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Género</th><th>Cabaña</th><th>Programa</th><th>Tribu</th></tr></thead>
-    <tbody>${tableRows || '<tr><td colspan="8">No hay campistas para esta cabaña.</td></tr>'}</tbody>
+    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th><th>Tribu</th></tr></thead>
+    <tbody>${tableRows || '<tr><td colspan="7">No hay campistas para esta cabaña.</td></tr>'}</tbody>
   </table>
   <div class="note"><strong>Nota para staff:</strong> usa esta hoja para ubicar a los campistas de cada cabaña y enviarlos a su tribu correspondiente.</div>
 </body>
@@ -172,15 +172,15 @@ function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
 function downloadAllTribeSheets(teams) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const sections = teams.map((team) => {
-    const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(genderLabel(member.gender))}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
+    const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
     return `<section class="tribe-page" style="--tribe:${team.color}">
       <header>
         <div><h1><img class="flag" src="${escapeHtml(team.flagUrl)}" alt="Bandera de ${escapeHtml(team.name)}" />${escapeHtml(team.name)}</h1><p>Lista para reunir a los campistas de esta tribu.</p></div>
         <div class="meta"><strong>Formación de Tribus</strong><br />${team.members.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
       </header>
       <table>
-        <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Género</th><th>Cabaña</th><th>Programa</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="7">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
+        <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
       </table>
       <div class="call-note"><strong>Nota para staff:</strong> llama a cada campista, verifica su cabaña y marca asistencia antes de iniciar la actividad.</div>
     </section>`
