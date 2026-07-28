@@ -49,6 +49,28 @@ export const TRIBES = [
   ['Canadá', 'ca', '#d44848', 'impares'], ['Uruguay', 'uy', '#428ebd', 'pares'],
 ].map(([name, flagCode, color, side]) => ({ name, flagCode, flagUrl: `https://flagcdn.com/w80/${flagCode}.png`, color, side }))
 
+export const LOCKED_TRIBE_ASSIGNMENTS = [
+  { fullName: 'Bernardo Aranguren', age: 13, cabin: 'S14', tribe: 'Inglaterra' },
+  { fullName: 'Alberto Bernoti', age: 14, cabin: 'AV 2', tribe: 'Inglaterra' },
+  { fullName: 'Ronald Morrison', age: 9, cabin: 'B12', tribe: 'Inglaterra' },
+  { fullName: 'Antonieta Requena', age: 16, cabin: 'CIT 4', tribe: 'España' },
+  { fullName: 'Oscar Castro', age: 8, cabin: 'B10', tribe: 'España' },
+  { fullName: 'Feliciano Palacios', age: 9, cabin: 'B10', tribe: 'España' },
+  { fullName: 'Sebastian Aranguren', age: 14, cabin: 'AV 4', tribe: 'Noruega' },
+  { fullName: 'Juan Marquez', age: 10, cabin: 'B12', tribe: 'Noruega' },
+  { fullName: 'Nicolas Godayol', age: 13, cabin: 'S14', tribe: 'Portugal' },
+  { fullName: 'Geronimo Baptista', age: 14, cabin: 'AV 2', tribe: 'Portugal' },
+  { fullName: 'Anabella Mendez', age: 14, cabin: 'AV 2', tribe: 'Portugal' },
+  { fullName: 'Emiliana Morrison', age: 13, cabin: 'S1', tribe: 'Francia' },
+  { fullName: 'Luisana Inciarte', age: 12, cabin: 'S3', tribe: 'Francia' },
+  { fullName: 'Ana Sofia Castro', age: 10, cabin: 'B3', tribe: 'Brasil' },
+  { fullName: 'Jimena Valdes', age: 10, cabin: 'B1', tribe: 'Brasil' },
+  { fullName: 'Mathias Becks', age: 13, cabin: 'AV 5', tribe: 'Alemania' },
+  { fullName: 'Diego Bonilla', age: 13, cabin: 'AV 1', tribe: 'Alemania' },
+  { fullName: 'Elena Aguilar', age: 12, cabin: 'S5', tribe: 'Canadá' },
+  { fullName: 'Cristina Requena', age: 12, cabin: 'S3', tribe: 'Canadá' },
+]
+
 export const DEMO_CAMPERS = [
   ['Sofía Herrera', 12, 3, 5, 4, 5, 4], ['Mateo Rojas', 13, 5, 4, 3, 2, 4],
   ['Valentina Cruz', 11, 2, 4, 5, 5, 3], ['Santiago León', 14, 4, 3, 4, 3, 5],

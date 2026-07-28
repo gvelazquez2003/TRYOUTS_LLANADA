@@ -1,5 +1,5 @@
-import { BALANCE_DIMENSIONS, SKILLS, TRIBES } from './data.js'
-import { getCabinProgram, getCabinSide } from './cabins.js'
+import { BALANCE_DIMENSIONS, LOCKED_TRIBE_ASSIGNMENTS, SKILLS, TRIBES } from './data.js'
+import { getCabinProgram, getCabinSide, normalizeCabin } from './cabins.js'
 
 const camperVector = (camper) => BALANCE_DIMENSIONS.map(({ key }) => camper[key])
 const sum = (values) => values.reduce((total, value) => total + value, 0)
@@ -17,13 +17,51 @@ function shuffle(values) {
   return copy
 }
 
-function balancedCapacities(totalCampers) {
+const normalizeAssignmentText = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, ' ')
+
+const lockedAssignments = LOCKED_TRIBE_ASSIGNMENTS.map((assignment) => ({
+  ...assignment,
+  normalizedName: normalizeAssignmentText(assignment.fullName),
+  normalizedCabin: normalizeCabin(assignment.cabin),
+  teamIndex: TRIBES.findIndex((tribe) => normalizeAssignmentText(tribe.name) === normalizeAssignmentText(assignment.tribe)),
+}))
+
+function camperAssignmentName(camper) {
+  return normalizeAssignmentText([camper.name, camper.lastName].filter(Boolean).join(' '))
+}
+
+function getLockedTeamIndex(camper) {
+  const camperName = camperAssignmentName(camper)
+  const camperCabin = normalizeCabin(camper.cabin)
+  const assignment = lockedAssignments.find((item) =>
+    item.teamIndex >= 0 &&
+    item.normalizedName === camperName &&
+    Number(item.age) === Number(camper.age) &&
+    item.normalizedCabin === camperCabin)
+  return assignment?.teamIndex ?? -1
+}
+
+function balancedCapacities(totalCampers, minimums = []) {
   const baseSize = Math.floor(totalCampers / TRIBES.length)
   const extra = totalCampers % TRIBES.length
   const capacities = Array(TRIBES.length).fill(baseSize)
   shuffle(Array.from({ length: TRIBES.length }, (_, index) => index))
     .slice(0, extra)
     .forEach((index) => { capacities[index] += 1 })
+  minimums.forEach((minimum, index) => {
+    while (capacities[index] < minimum) {
+      const donor = capacities.reduce((best, capacity, candidate) =>
+        candidate !== index && capacity > (minimums[candidate] || 0) && (best < 0 || capacity > capacities[best]) ? candidate : best, -1)
+      if (donor < 0) break
+      capacities[donor] -= 1
+      capacities[index] += 1
+    }
+  })
   return capacities
 }
 
@@ -154,6 +192,7 @@ function improveWithSwaps(teams, globalAverage, ranges, globalProportions, dimen
           for (let rightMemberIndex = 0; rightMemberIndex < right.members.length; rightMemberIndex += 1) {
             const leftMember = left.members[leftMemberIndex]
             const rightMember = right.members[rightMemberIndex]
+            if (left.lockedIds?.has(leftMember.id) || right.lockedIds?.has(rightMember.id)) continue
             if (!canSwapInto(left, leftMember, rightMember) || !canSwapInto(right, rightMember, leftMember)) continue
 
             left.members[leftMemberIndex] = rightMember
@@ -203,13 +242,28 @@ export function balanceCampers(campers) {
       campers.filter(({ cabin, gender }) => getCabinProgram(cabin) && gender).length,
     ),
   }
+  const lockedTeamByCamperId = new Map()
+  campers.forEach((camper) => {
+    const teamIndex = getLockedTeamIndex(camper)
+    if (teamIndex >= 0) lockedTeamByCamperId.set(camper.id, teamIndex)
+  })
+  const lockedMinimums = Array(TRIBES.length).fill(0)
+  lockedTeamByCamperId.forEach((teamIndex) => { lockedMinimums[teamIndex] += 1 })
   let best = null
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const capacities = balancedCapacities(campers.length)
-    const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index], genderCounts: {}, programCounts: {}, programGenderCounts: {}, cabinCounts: {} }))
+    const capacities = balancedCapacities(campers.length, lockedMinimums)
+    const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index], genderCounts: {}, programCounts: {}, programGenderCounts: {}, cabinCounts: {}, lockedIds: new Set() }))
+    campers.forEach((camper, index) => {
+      const teamIndex = lockedTeamByCamperId.get(camper.id)
+      if (teamIndex === undefined) return
+      addToTeam(teams[teamIndex], camper, vectors[index])
+      teams[teamIndex].lockedIds.add(camper.id)
+    })
     const order = campers
-      .map((camper, index) => ({ camper, vector: vectors[index], distance: sum(vectors[index].map((value, dimension) => normalizedWeights[dimension] * ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.008 }))
+      .map((camper, index) => ({ camper, vector: vectors[index] }))
+      .filter(({ camper }) => !lockedTeamByCamperId.has(camper.id))
+      .map(({ camper, vector }) => ({ camper, vector, distance: sum(vector.map((value, dimension) => normalizedWeights[dimension] * ((value - globalAverage[dimension]) / ranges[dimension]) ** 2)) + Math.random() * 0.008 }))
       .sort((a, b) => b.distance - a.distance)
 
     order.forEach(({ camper, vector }) => {
