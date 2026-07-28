@@ -46,23 +46,40 @@ function getLockedTeamIndex(camper) {
   return assignment?.teamIndex ?? -1
 }
 
-function balancedCapacities(totalCampers, minimums = []) {
-  const baseSize = Math.floor(totalCampers / TRIBES.length)
-  const extra = totalCampers % TRIBES.length
-  const capacities = Array(TRIBES.length).fill(baseSize)
-  shuffle(Array.from({ length: TRIBES.length }, (_, index) => index))
-    .slice(0, extra)
-    .forEach((index) => { capacities[index] += 1 })
+function addCapacity(capacities, teamIndexes, count) {
+  if (!teamIndexes.length || !count) return
+  const baseSize = Math.floor(count / teamIndexes.length)
+  const extra = count % teamIndexes.length
+  teamIndexes.forEach((index) => { capacities[index] += baseSize })
+  shuffle(teamIndexes).slice(0, extra).forEach((index) => { capacities[index] += 1 })
+}
+
+function balancedCapacities(campers, minimums = []) {
+  const capacities = Array(TRIBES.length).fill(0)
+  ;['pares', 'impares'].forEach((side) => {
+    const teamIndexes = TRIBES.map((tribe, index) => (tribe.side === side ? index : null)).filter((index) => index !== null)
+    addCapacity(capacities, teamIndexes, campers.filter((camper) => getCabinSide(camper.cabin) === side).length)
+  })
+  campers.filter((camper) => !getCabinSide(camper.cabin)).forEach(() => {
+    const smallest = capacities.reduce((best, capacity, index) => capacity < capacities[best] ? index : best, 0)
+    capacities[smallest] += 1
+  })
   minimums.forEach((minimum, index) => {
     while (capacities[index] < minimum) {
+      const side = TRIBES[index].side
       const donor = capacities.reduce((best, capacity, candidate) =>
-        candidate !== index && capacity > (minimums[candidate] || 0) && (best < 0 || capacity > capacities[best]) ? candidate : best, -1)
+        candidate !== index && TRIBES[candidate].side === side && capacity > (minimums[candidate] || 0) && (best < 0 || capacity > capacities[best]) ? candidate : best, -1)
       if (donor < 0) break
       capacities[donor] -= 1
       capacities[index] += 1
     }
   })
   return capacities
+}
+
+function teamCanReceiveCamper(team, camper) {
+  const side = getCabinSide(camper.cabin)
+  return !side || team.side === side
 }
 
 function categoricalDeviation(projected, target) {
@@ -78,18 +95,37 @@ function categoryScore(counts, proportionsMap, capacity, weight) {
   }, 0)
 }
 
+function categoryProportions(campers) {
+  return {
+    gender: proportions(countBy(campers, ({ gender }) => gender), campers.filter(({ gender }) => gender).length),
+    program: proportions(countBy(campers, ({ cabin }) => getCabinProgram(cabin)), campers.filter(({ cabin }) => getCabinProgram(cabin)).length),
+    programGender: proportions(
+      countBy(campers, ({ cabin, gender }) => {
+        const program = getCabinProgram(cabin)
+        return program && gender ? `${program}:${gender}` : ''
+      }),
+      campers.filter(({ cabin, gender }) => getCabinProgram(cabin) && gender).length,
+    ),
+  }
+}
+
+function proportionsForTeam(globalProportions, team) {
+  return globalProportions.bySide[team.side] || globalProportions.all
+}
+
 function evaluate(teams, globalAverage, ranges, globalProportions) {
   return teams.reduce((score, team) => {
     if (!team.members.length) return score
+    const targetProportions = proportionsForTeam(globalProportions, team)
     const averages = team.sums.map((value) => value / team.members.length)
     const skillScore = averages.reduce((total, value, index) => {
       const deviation = (value - globalAverage[index]) / ranges[index]
       return total + normalizedWeights[index] * deviation ** 2
     }, 0)
     const categoricalScore =
-      categoryScore(team.genderCounts, globalProportions.gender, team.capacity, CATEGORICAL_WEIGHTS.gender) +
-      categoryScore(team.programCounts, globalProportions.program, team.capacity, CATEGORICAL_WEIGHTS.program) +
-      categoryScore(team.programGenderCounts, globalProportions.programGender, team.capacity, CATEGORICAL_WEIGHTS.programGender)
+      categoryScore(team.genderCounts, targetProportions.gender, team.capacity, CATEGORICAL_WEIGHTS.gender) +
+      categoryScore(team.programCounts, targetProportions.program, team.capacity, CATEGORICAL_WEIGHTS.program) +
+      categoryScore(team.programGenderCounts, targetProportions.programGender, team.capacity, CATEGORICAL_WEIGHTS.programGender)
     return score + skillScore + categoricalScore
   }, 0)
 }
@@ -109,6 +145,7 @@ function proportions(counts, total) {
 function categoricalCost(team, camper, globalProportions) {
   const projectedSize = team.members.length + 1
   const capacity = Math.max(team.capacity || projectedSize, projectedSize, 1)
+  const targetProportions = proportionsForTeam(globalProportions, team)
   const gender = camper.gender || ''
   const program = getCabinProgram(camper.cabin)
   const programGender = program && gender ? `${program}:${gender}` : ''
@@ -116,19 +153,19 @@ function categoricalCost(team, camper, globalProportions) {
 
   if (gender) {
     const projected = (team.genderCounts[gender] || 0) + 1
-    const target = (globalProportions.gender[gender] || 0) * capacity
+    const target = (targetProportions.gender[gender] || 0) * capacity
     cost += CATEGORICAL_WEIGHTS.gender * categoricalDeviation(projected, target)
   }
 
   if (program) {
     const projected = (team.programCounts[program] || 0) + 1
-    const target = (globalProportions.program[program] || 0) * capacity
+    const target = (targetProportions.program[program] || 0) * capacity
     cost += CATEGORICAL_WEIGHTS.program * categoricalDeviation(projected, target)
   }
 
   if (programGender) {
     const projected = (team.programGenderCounts[programGender] || 0) + 1
-    const target = (globalProportions.programGender[programGender] || 0) * capacity
+    const target = (targetProportions.programGender[programGender] || 0) * capacity
     cost += CATEGORICAL_WEIGHTS.programGender * categoricalDeviation(projected, target)
   }
 
@@ -193,6 +230,7 @@ function improveWithSwaps(teams, globalAverage, ranges, globalProportions, dimen
             const leftMember = left.members[leftMemberIndex]
             const rightMember = right.members[rightMemberIndex]
             if (left.lockedIds?.has(leftMember.id) || right.lockedIds?.has(rightMember.id)) continue
+            if (!teamCanReceiveCamper(left, rightMember) || !teamCanReceiveCamper(right, leftMember)) continue
             if (!canSwapInto(left, leftMember, rightMember) || !canSwapInto(right, rightMember, leftMember)) continue
 
             left.members[leftMemberIndex] = rightMember
@@ -232,15 +270,11 @@ export function balanceCampers(campers) {
     return Math.max(Math.max(...values) - Math.min(...values), 1)
   })
   const globalProportions = {
-    gender: proportions(countBy(campers, ({ gender }) => gender), campers.filter(({ gender }) => gender).length),
-    program: proportions(countBy(campers, ({ cabin }) => getCabinProgram(cabin)), campers.filter(({ cabin }) => getCabinProgram(cabin)).length),
-    programGender: proportions(
-      countBy(campers, ({ cabin, gender }) => {
-        const program = getCabinProgram(cabin)
-        return program && gender ? `${program}:${gender}` : ''
-      }),
-      campers.filter(({ cabin, gender }) => getCabinProgram(cabin) && gender).length,
-    ),
+    all: categoryProportions(campers),
+    bySide: Object.fromEntries(['pares', 'impares'].map((side) => [
+      side,
+      categoryProportions(campers.filter((camper) => getCabinSide(camper.cabin) === side)),
+    ])),
   }
   const lockedTeamByCamperId = new Map()
   campers.forEach((camper) => {
@@ -252,7 +286,7 @@ export function balanceCampers(campers) {
   let best = null
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const capacities = balancedCapacities(campers.length, lockedMinimums)
+    const capacities = balancedCapacities(campers, lockedMinimums)
     const teams = TRIBES.map((tribe, index) => ({ ...tribe, members: [], sums: Array(dimensionCount).fill(0), capacity: capacities[index], genderCounts: {}, programCounts: {}, programGenderCounts: {}, cabinCounts: {}, lockedIds: new Set() }))
     campers.forEach((camper, index) => {
       const teamIndex = lockedTeamByCamperId.get(camper.id)
@@ -267,11 +301,11 @@ export function balanceCampers(campers) {
       .sort((a, b) => b.distance - a.distance)
 
     order.forEach(({ camper, vector }) => {
-      const camperSide = getCabinSide(camper.cabin)
-      let candidates = teams.filter((team) => team.members.length < team.capacity && cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
-      if (!candidates.length) candidates = teams.filter((team) => team.members.length < team.capacity)
-      if (!candidates.length) candidates = teams.filter((team) => cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
-      if (!candidates.length) candidates = teams
+      const eligibleTeams = teams.filter((team) => teamCanReceiveCamper(team, camper))
+      let candidates = eligibleTeams.filter((team) => team.members.length < team.capacity && cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
+      if (!candidates.length) candidates = eligibleTeams.filter((team) => team.members.length < team.capacity)
+      if (!candidates.length) candidates = eligibleTeams.filter((team) => cabinCount(team, camper) < MAX_SAME_CABIN_PER_TRIBE)
+      if (!candidates.length) candidates = eligibleTeams
       let chosen = candidates[0]
       let chosenCost = Number.POSITIVE_INFINITY
       candidates.forEach((team) => {
@@ -281,8 +315,7 @@ export function balanceCampers(campers) {
         const mismatch = sum(projected.map((value, index) => normalizedWeights[index] * ((value - target[index]) / (ranges[index] * capacity)) ** 2))
         const fillBonus = team.members.length / Math.max(team.capacity, 1) * 0.018
         const cabinPenalty = camper.cabin && cabinCount(team, camper) ? 0.035 : 0
-        const sidePenalty = camperSide && team.side !== camperSide ? 0.08 : 0
-        const cost = mismatch + categoricalCost(team, camper, globalProportions) + fillBonus + cabinPenalty + sidePenalty + Math.random() * 0.001
+        const cost = mismatch + categoricalCost(team, camper, globalProportions) + fillBonus + cabinPenalty + Math.random() * 0.001
         if (cost < chosenCost) { chosen = team; chosenCost = cost }
       })
       addToTeam(chosen, camper, vector)
