@@ -77,7 +77,7 @@ async function readCsvText(file) {
 
 function downloadTribeSheet(team) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
-  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
+  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
   const html = `<!doctype html>
 <html lang="es">
 <head>
@@ -105,8 +105,8 @@ function downloadTribeSheet(team) {
     <div class="meta"><strong>Formación de Tribus</strong><br />${team.members.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
   </header>
   <table>
-    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="6">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
+    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
   </table>
   <div class="call-note"><strong>Nota para staff:</strong> llama a cada campista, verifica su cabaña y marca asistencia antes de iniciar la actividad.</div>
 </body>
@@ -125,7 +125,7 @@ function downloadTribeSheet(team) {
 function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const title = cabinFilter ? `Cabaña ${cabinFilter}` : groupFilter || 'Todas las cabañas'
-  const tableRows = rows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(camper.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(camper.cabin)))}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
+  const tableRows = rows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(camper.cabin || '—')}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
   const html = `<!doctype html>
 <html lang="es">
 <head>
@@ -152,8 +152,8 @@ function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
     <div class="meta"><strong>Formación de Tribus</strong><br />${rows.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
   </header>
   <table>
-    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th><th>Tribu</th></tr></thead>
-    <tbody>${tableRows || '<tr><td colspan="7">No hay campistas para esta cabaña.</td></tr>'}</tbody>
+    <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Tribu</th></tr></thead>
+    <tbody>${tableRows || '<tr><td colspan="6">No hay campistas para esta cabaña.</td></tr>'}</tbody>
   </table>
   <div class="note"><strong>Nota para staff:</strong> usa esta hoja para ubicar a los campistas de cada cabaña y enviarlos a su tribu correspondiente.</div>
 </body>
@@ -169,18 +169,81 @@ function downloadCabinAssignmentSheet(rows, cabinFilter, groupFilter = '') {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function downloadAllCabinSheets(teams) {
+  const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
+  const rows = teams.flatMap((team) => team.members.map((camper) => ({ camper, team })))
+  const grouped = rows.reduce((groups, row) => {
+    const cabin = row.camper.cabin || 'Sin cabaña'
+    if (!groups.has(cabin)) groups.set(cabin, [])
+    groups.get(cabin).push(row)
+    return groups
+  }, new Map())
+  const cabinNames = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+  const sections = cabinNames.map((cabin) => {
+    const cabinRows = grouped.get(cabin).sort((a, b) => fullName(a.camper).localeCompare(fullName(b.camper), 'es'))
+    const tableRows = cabinRows.map(({ camper, team }, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(camper.name)}</td><td>${escapeHtml(camper.lastName || '—')}</td><td>${escapeHtml(camper.age)}</td><td>${escapeHtml(team.name)}</td></tr>`).join('')
+    return `<section class="cabin-page">
+      <header>
+        <div><h1>${escapeHtml(cabin)}</h1><p>Campistas de esta cabaña con su tribu asignada.</p></div>
+        <div class="meta"><strong>Formación de Tribus</strong><br />${cabinRows.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
+      </header>
+      <table>
+        <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Tribu</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="note"><strong>Nota para staff:</strong> usa esta hoja para ubicar a los campistas de la cabaña y enviarlos a su tribu correspondiente.</div>
+    </section>`
+  }).join('')
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todas las cabañas · Formación de Tribus</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #173f35; margin: 0; }
+    .no-print { margin: 18px 32px 0; padding: 10px 14px; border: 0; border-radius: 8px; background:#173f35; color:white; font-weight:700; }
+    .cabin-page { min-height: calc(100vh - 64px); padding: 32px; page-break-after: always; }
+    .cabin-page:last-child { page-break-after: auto; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #173f35; padding-bottom: 16px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 34px; }
+    .meta { text-align: right; color: #617168; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    th { text-align: left; background: #edf3e9; color: #173f35; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    th, td { border: 1px solid #d9dfd6; padding: 10px 12px; }
+    td:first-child { width: 48px; text-align: center; color: #617168; }
+    .note { margin-top: 22px; border: 1px dashed #b9c4b8; border-radius: 10px; padding: 14px; color: #52645d; }
+    @media print { .no-print { display: none; } .cabin-page { min-height: auto; padding: 20mm; } }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()">Imprimir todas las cabañas</button>
+  ${sections || '<section class="cabin-page"><h1>No hay campistas con tribu asignada.</h1></section>'}
+</body>
+</html>`
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'todas-las-cabanas-tribus.html'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function downloadAllTribeSheets(teams) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const sections = teams.map((team) => {
-    const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td><td>${escapeHtml(programLabel(getCabinProgram(member.cabin)))}</td></tr>`).join('')
+    const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
     return `<section class="tribe-page" style="--tribe:${team.color}">
       <header>
         <div><h1><img class="flag" src="${escapeHtml(team.flagUrl)}" alt="Bandera de ${escapeHtml(team.name)}" />${escapeHtml(team.name)}</h1><p>Lista para reunir a los campistas de esta tribu.</p></div>
         <div class="meta"><strong>Formación de Tribus</strong><br />${team.members.length} campista(s)<br />${escapeHtml(generatedAt)}</div>
       </header>
       <table>
-        <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th><th>Programa</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="6">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
+        <thead><tr><th>#</th><th>Nombre</th><th>Apellido</th><th>Edad</th><th>Cabaña</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5">Esta tribu no tiene campistas asignados.</td></tr>'}</tbody>
       </table>
       <div class="call-note"><strong>Nota para staff:</strong> llama a cada campista, verifica su cabaña y marca asistencia antes de iniciar la actividad.</div>
     </section>`
@@ -474,7 +537,7 @@ function Tribes({ campers, teams, generated, onGenerate, onMove, onAddCamper }) 
     <section className="tribe-section"><div className="section-heading"><div><span className="eyebrow">Mapa de tribus</span><h2>{generated ? 'Distribución actual' : 'Las tribus del campamento'}</h2></div>{generated && <div className="result-legend"><span><i className="dot green-dot" /> Cambios manuales habilitados</span><span>Arrastra campistas entre tribus</span></div>}</div>
       {generated && <div className="customize-hint"><MoveRight size={18} /><span><strong>Esta distribución es editable sin restricciones.</strong> Abre una tribu para mover a un campista, o arrástralo directamente entre tarjetas.</span></div>}
       {generated && <div className="tribe-filter-bar"><div className="search"><Search size={18} /><input value={tribeQuery} onChange={(event) => setTribeQuery(event.target.value)} placeholder="Filtrar en tribus por nombre..." /></div><span>{hasTribeFilter ? `${filteredTotal} coincidencia(s) de ${campers.length}` : `${campers.length} campistas distribuidos`}</span>{hasTribeFilter && <button type="button" onClick={() => setTribeQuery('')}>Limpiar filtro</button>}</div>}
-      {generated && <div className="cabin-export-bar"><label className="field"><span>Filtrar por cabaña</span><select value={cabinFilter} onChange={(event) => setCabinFilter(event.target.value)}><option value="">Todas las cabañas</option>{cabinOptions.map((cabin) => <option key={cabin} value={cabin}>{cabin}</option>)}</select></label><label className="field"><span>Filtrar por género</span><select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)}><option value="">Todos</option>{GENDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="field"><span>Filtrar por edad</span><select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value)}><option value="">Todas</option>{ageOptions.map((age) => <option key={age} value={age}>{age} años</option>)}</select></label><span>{hasRosterFilter ? `${filteredTotal} campista(s) filtrado(s)` : `${cabinRows.length} campista(s) con tribu`}</span><button type="button" className="button secondary" disabled={!cabinRows.length} onClick={() => downloadCabinAssignmentSheet(cabinRows, cabinFilter, programFilterTitle(programFilter))}><Download size={16} /> Exportar lista</button><button type="button" className="button secondary" disabled={!teams.some((team) => team.members.length)} onClick={() => downloadAllTribeSheets(teams)}><Download size={16} /> Todas las tribus</button><div className="side-buttons"><button type="button" className={programFilter === 'bosque' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'bosque' ? '' : 'bosque')}>Todos Bosque</button><button type="button" className={programFilter === 'sabana' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'sabana' ? '' : 'sabana')}>Todos Sabana</button><button type="button" className={programFilter === 'cit' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'cit' ? '' : 'cit')}>Todos CIT</button><button type="button" className={programFilter === 'aventura' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'aventura' ? '' : 'aventura')}>Todos AV</button></div><div className="side-buttons"><button type="button" className={sideFilter === 'pares' ? 'active' : ''} onClick={() => setSideFilter(sideFilter === 'pares' ? 'all' : 'pares')}>Pares</button><button type="button" className={sideFilter === 'impares' ? 'active' : ''} onClick={() => setSideFilter(sideFilter === 'impares' ? 'all' : 'impares')}>Impares</button></div>{hasRosterFilter && <button type="button" onClick={() => { setCabinFilter(''); setGenderFilter(''); setAgeFilter(''); setProgramFilter('') }}>Limpiar filtros</button>}</div>}
+      {generated && <div className="cabin-export-bar"><label className="field"><span>Filtrar por cabaña</span><select value={cabinFilter} onChange={(event) => setCabinFilter(event.target.value)}><option value="">Todas las cabañas</option>{cabinOptions.map((cabin) => <option key={cabin} value={cabin}>{cabin}</option>)}</select></label><label className="field"><span>Filtrar por género</span><select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)}><option value="">Todos</option>{GENDER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label className="field"><span>Filtrar por edad</span><select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value)}><option value="">Todas</option>{ageOptions.map((age) => <option key={age} value={age}>{age} años</option>)}</select></label><span>{hasRosterFilter ? `${filteredTotal} campista(s) filtrado(s)` : `${cabinRows.length} campista(s) con tribu`}</span><button type="button" className="button secondary" disabled={!cabinRows.length} onClick={() => downloadCabinAssignmentSheet(cabinRows, cabinFilter, programFilterTitle(programFilter))}><Download size={16} /> Exportar lista</button><button type="button" className="button secondary" disabled={!teams.some((team) => team.members.length)} onClick={() => downloadAllTribeSheets(teams)}><Download size={16} /> Todas las tribus</button><button type="button" className="button secondary" disabled={!teams.some((team) => team.members.length)} onClick={() => downloadAllCabinSheets(teams)}><Download size={16} /> Todas por cabaña</button><div className="side-buttons"><button type="button" className={programFilter === 'bosque' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'bosque' ? '' : 'bosque')}>Todos Bosque</button><button type="button" className={programFilter === 'sabana' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'sabana' ? '' : 'sabana')}>Todos Sabana</button><button type="button" className={programFilter === 'cit' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'cit' ? '' : 'cit')}>Todos CIT</button><button type="button" className={programFilter === 'aventura' ? 'active' : ''} onClick={() => setProgramFilter(programFilter === 'aventura' ? '' : 'aventura')}>Todos AV</button></div><div className="side-buttons"><button type="button" className={sideFilter === 'pares' ? 'active' : ''} onClick={() => setSideFilter(sideFilter === 'pares' ? 'all' : 'pares')}>Pares</button><button type="button" className={sideFilter === 'impares' ? 'active' : ''} onClick={() => setSideFilter(sideFilter === 'impares' ? 'all' : 'impares')}>Impares</button></div>{hasRosterFilter && <button type="button" onClick={() => { setCabinFilter(''); setGenderFilter(''); setAgeFilter(''); setProgramFilter('') }}>Limpiar filtros</button>}</div>}
       {generated && <div className="tribe-add-row"><button type="button" className="button secondary" onClick={() => setAddingTeamIndex(selectedIndex ?? 0)}><Plus size={18} /> Agregar campista a tribu</button></div>}
       {(hasRosterFilter || hasSideFilter) && !displayedTeams.length && <div className="empty-mini tribe-filter-empty">No hay tribus con campistas que coincidan con ese filtro.</div>}
       <div className="tribe-grid">{displayedTeams.map((team) => { const teamIndex = teams.findIndex(({ name }) => name === team.name); const averages = teamAverages(team.members); const visibleMembers = team.visibleMembers || team.members; return <article className={`tribe-card ${generated ? 'generated' : ''}`} key={team.name} style={{ '--tribe': team.color }} onClick={() => generated && setSelectedIndex(teamIndex)} onDragOver={(event) => generated && event.preventDefault()} onDrop={(event) => dropMember(event, teamIndex)}><div className="tribe-accent" /><div className="tribe-top"><FlagImage team={team} /><span className="member-count"><Users size={14} /> {hasRosterFilter ? `${visibleMembers.length}/${team.members.length}` : team.members.length}</span></div><h3>{team.name}</h3>{generated ? <><div className="member-preview">{visibleMembers.slice(0, 3).map((member) => <span draggable onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.setData('text/camper-id', member.id); event.dataTransfer.setData('text/team-index', String(teamIndex)) }} className="mini-avatar" title={`${fullName(member)} · arrastra para mover`} key={member.id}>{initials(fullName(member))}</span>)}{visibleMembers.length > 3 && <span className="mini-avatar more">+{visibleMembers.length - 3}</span>}{!hasRosterFilter && !team.members.length && <small>Suelta un campista aquí</small>}</div><div className="tribe-metrics"><span>Edad <strong>{averages.age ? averages.age.toFixed(1) : '—'}</strong></span><span>Aptitud <strong>{averages.skills ? averages.skills.toFixed(1) : '—'}</strong></span></div></> : <p>Esperando distribución</p>} {generated && <div className="tribe-actions"><button type="button" onClick={(event) => { event.stopPropagation(); setSelectedIndex(teamIndex) }}>Editar <ChevronRight size={15} /></button><button type="button" disabled={!team.members.length} onClick={(event) => { event.stopPropagation(); downloadTribeSheet(team) }}><Download size={14} /> Hoja</button></div>}</article> })}</div>
