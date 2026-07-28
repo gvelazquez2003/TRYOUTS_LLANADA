@@ -57,6 +57,28 @@ const fileSafe = (value) => String(value || 'tribu')
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-|-$/g, '')
 
+const PRINT_PROGRAM_ORDER = ['bosque', 'sabana', 'aventura', 'cit']
+const printProgramRank = (camper) => {
+  const index = PRINT_PROGRAM_ORDER.indexOf(getCabinProgram(camper.cabin))
+  return index >= 0 ? index : PRINT_PROGRAM_ORDER.length
+}
+const sortCampersForTribePrint = (members) => [...members].sort((a, b) => (
+  printProgramRank(a) - printProgramRank(b) ||
+  (a.cabin || '').localeCompare(b.cabin || '', 'es', { numeric: true }) ||
+  fullName(a).localeCompare(fullName(b), 'es', { sensitivity: 'base' })
+))
+const groupedTribePrintRows = (members) => {
+  let currentProgram = null
+  let rowNumber = 0
+  return sortCampersForTribePrint(members).map((member) => {
+    const program = getCabinProgram(member.cabin) || 'sin-programa'
+    const header = program !== currentProgram ? `<tr class="group-row"><td colspan="5">${escapeHtml(programLabel(program))}</td></tr>` : ''
+    currentProgram = program
+    rowNumber += 1
+    return `${header}<tr><td>${rowNumber}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`
+  }).join('')
+}
+
 function FlagImage({ team, large = false }) {
   return <img className={`flag-emoji ${large ? 'large' : ''}`} src={team.flagUrl} alt={`Bandera de ${team.name}`} loading="lazy" />
 }
@@ -77,7 +99,7 @@ async function readCsvText(file) {
 
 function downloadTribeSheet(team) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
-  const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
+  const rows = groupedTribePrintRows(team.members)
   const html = `<!doctype html>
 <html lang="es">
 <head>
@@ -94,6 +116,8 @@ function downloadTribeSheet(team) {
     th { text-align: left; background: #edf3e9; color: #173f35; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
     th, td { border: 1px solid #d9dfd6; padding: 11px 12px; }
     td:first-child { width: 48px; text-align: center; color: #617168; }
+    .group-row td { background: #f7f0df; color: #7b5e20; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .group-row td:first-child { width: auto; text-align: left; }
     .call-note { margin-top: 22px; border: 1px dashed #b9c4b8; border-radius: 10px; padding: 14px; color: #52645d; }
     @media print { body { margin: 20mm; } .no-print { display: none; } }
   </style>
@@ -235,7 +259,7 @@ function downloadAllCabinSheets(teams) {
 function downloadAllTribeSheets(teams) {
   const generatedAt = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const sections = teams.map((team) => {
-    const rows = team.members.map((member, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(member.name)}</td><td>${escapeHtml(member.lastName || '—')}</td><td>${escapeHtml(member.age)}</td><td>${escapeHtml(member.cabin || '—')}</td></tr>`).join('')
+    const rows = groupedTribePrintRows(team.members)
     return `<section class="tribe-page" style="--tribe:${team.color}">
       <header>
         <div><h1><img class="flag" src="${escapeHtml(team.flagUrl)}" alt="Bandera de ${escapeHtml(team.name)}" />${escapeHtml(team.name)}</h1><p>Lista para reunir a los campistas de esta tribu.</p></div>
@@ -267,6 +291,8 @@ function downloadAllTribeSheets(teams) {
     th { text-align: left; background: #edf3e9; color: #173f35; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
     th, td { border: 1px solid #d9dfd6; padding: 10px 12px; }
     td:first-child { width: 48px; text-align: center; color: #617168; }
+    .group-row td { background: #f7f0df; color: #7b5e20; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .group-row td:first-child { width: auto; text-align: left; }
     .call-note { margin-top: 22px; border: 1px dashed #b9c4b8; border-radius: 10px; padding: 14px; color: #52645d; }
     @media print { .no-print { display: none; } .tribe-page { min-height: auto; padding: 20mm; } }
   </style>
