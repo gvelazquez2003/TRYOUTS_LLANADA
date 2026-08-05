@@ -123,6 +123,37 @@ header { height: 82px; }
 .duplicate-report li > span { color: #8a6720; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
 .duplicate-report li small { color: #8a7c5c; white-space: nowrap; }
 
+/* Configuracion de temporada */
+.season-panel { margin: 0 0 28px; overflow: hidden; }
+.season-summary { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.season-summary span { border-radius: 999px; background: #f0f3eb; color: var(--green); padding: 7px 10px; font-size: 11px; font-weight: 900; }
+.season-grid { display: grid; grid-template-columns: 1.35fr .95fr; gap: 0; border-top: 1px solid #ecebe4; }
+.season-block { padding: 20px 22px; border-right: 1px solid #ecebe4; }
+.season-block:last-child { border-right: 0; }
+.season-block-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.season-block-heading strong { color: var(--green); font-size: 15px; }
+.season-block-heading small { color: #87938d; font-size: 11px; text-align: right; }
+.tribe-side-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.tribe-side-card { min-height: 70px; border: 1px solid #e1e2dc; border-top: 3px solid var(--tribe); border-radius: 8px; padding: 10px; display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 10px; background: #fff; }
+.tribe-side-card .flag-emoji { width: 42px; height: 28px; }
+.tribe-side-card > div:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.tribe-side-card strong { color: var(--green); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tribe-side-card small { color: #8b9690; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.side-toggle { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.side-toggle button { min-height: 32px; border: 1px solid #d9ddd6; border-radius: 7px; background: #fff; color: #617168; font-size: 11px; font-weight: 900; }
+.side-toggle button.active { background: var(--green); border-color: var(--green); color: #fff; }
+.fixed-assignment-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.fixed-assignment-form .field:first-child, .fixed-assignment-form .field:nth-child(2) { grid-column: 1 / -1; }
+.fixed-assignment-form .button { min-height: 46px; }
+.fixed-assignment-list { margin-top: 14px; border: 1px solid #e3e4de; border-radius: 10px; overflow: hidden; background: #fff; }
+.fixed-assignment-list > div { min-height: 58px; padding: 9px 11px; display: flex; align-items: center; gap: 9px; border-top: 1px solid #eee; }
+.fixed-assignment-list > div:first-child { border-top: 0; }
+.fixed-assignment-list > div > div { display: grid; flex: 1; min-width: 0; }
+.fixed-assignment-list strong { color: var(--green); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fixed-assignment-list small { color: #84908a; font-size: 11px; }
+.fixed-team { display: inline-flex; align-items: center; gap: 6px; color: #4e665d; background: #f0f4ed; border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 900; white-space: nowrap; }
+.fixed-team .flag-emoji { width: 24px; height: 16px; border-radius: 4px; }
+
 /* Pesos y personalización de tribus */
 .weights-panel { margin: -18px 0 18px; padding: 16px 18px; border: 1px solid #dedfd8; background: #fff; border-radius: 15px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 7px 22px; }
 .weights-panel > div:first-child { display: grid; }
@@ -180,6 +211,17 @@ header { height: 82px; }
   .modal-heading-actions { align-items: flex-end; flex-direction: column-reverse; }
   .weights-panel { grid-template-columns: 1fr; }
   .weights-panel > small { grid-column: 1; }
+  .season-grid { grid-template-columns: 1fr; }
+  .season-block { border-right: 0; border-bottom: 1px solid #ecebe4; padding: 18px; }
+  .season-block:last-child { border-bottom: 0; }
+  .season-summary { justify-content: flex-start; }
+  .tribe-side-grid { grid-template-columns: 1fr; }
+  .season-block-heading { align-items: flex-start; flex-direction: column; }
+  .season-block-heading small { text-align: left; }
+  .fixed-assignment-form { grid-template-columns: 1fr; }
+  .fixed-assignment-form .field:first-child, .fixed-assignment-form .field:nth-child(2) { grid-column: auto; }
+  .fixed-assignment-list > div { align-items: flex-start; flex-wrap: wrap; }
+  .fixed-team { margin-left: 43px; }
   .tribe-filter-bar { align-items: flex-start; flex-direction: column; }
   .tribe-filter-bar .search { flex-basis: auto; width: 100%; }
   .tribe-filter-bar > span { white-space: normal; }

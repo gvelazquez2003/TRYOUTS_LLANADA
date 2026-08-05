@@ -6,13 +6,21 @@ La carga masiva acepta archivos CSV con las columnas `Nombre`, `Apellido`, `Edad
 
 Desde la tabla se pueden eliminar todos los campistas de una sola vez. Después de formar las tribus, cada tarjeta de tribu incluye una descarga HTML imprimible con nombre, apellido, edad y cabaña para entregarla al staff.
 
+En Tryouts tambien se configura cada temporada: que paises pertenecen a pares/impares y que campistas deben quedar fijos en una tribu antes de generar la distribucion. Esas reglas se guardan en el navegador y, si Supabase tiene la columna `season_settings`, tambien se sincronizan entre dispositivos.
+
 También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido + Edad` si todavía no tiene cabaña y actualiza esa ficha en vez de crear un duplicado.
 
 Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y tildes. La carga de CSV intenta leer correctamente archivos UTF-8 y Windows-1252/ANSI.
 
 Cuando una carga masiva encuentra duplicados, la app muestra cuáles son y permite copiar la lista para verificarlos más rápido.
 
-El balance usa estos pesos: Edad + Velocidad 50%, Liderazgo 20%, Fuerza 20%, Creatividad 5% e Inteligencia 5%.
+El balance usa estos pesos: Edad + Velocidad 40%, Liderazgo 20%, Fuerza 20%, Creatividad 10% e Inteligencia 10%.
+
+El archivo `campistas_prueba_300.csv` trae 300 campistas de prueba con nombres completos unicos y esta distribucion aproximada por programa: Bosque 100, Sabana 110, Aventura 50 y CIT 40. Para regenerarlo:
+
+```bash
+npm run generate:demo-csv
+```
 
 ## Desarrollo
 
@@ -40,6 +48,7 @@ create table if not exists public.tribe_app_state (
   id text primary key,
   campers jsonb not null default '[]'::jsonb,
   assignments jsonb,
+  season_settings jsonb,
   updated_at timestamptz not null default now(),
   updated_by text
 );

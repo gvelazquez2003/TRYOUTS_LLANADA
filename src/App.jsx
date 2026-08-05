@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Download, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Plus, RefreshCw, Search, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, Download, Edit3, FileSpreadsheet, LayoutGrid, Menu, MoveRight, Pin, Plus, RefreshCw, Search, Settings2, Sparkles, Trash2, Trophy, UploadCloud, UserPlus, Users, X } from 'lucide-react'
 import { balanceCampers, getBalanceScore, teamAverages } from './balance'
 import { CABIN_OPTIONS, getCabinProgram, isValidCabin, normalizeCabin, programLabel } from './cabins.js'
-import { BALANCE_DIMENSIONS, DEMO_CAMPERS, GENDER_OPTIONS, SKILLS, TRIBES, normalizeGender } from './data'
+import { BALANCE_DIMENSIONS, GENDER_OPTIONS, SKILLS, TRIBES, createDemoCampers, normalizeGender } from './data'
 import { parseCampersFile } from './importers'
 import { getDeviceId, isRemoteSyncConfigured, readLocalSnapshot, readRemoteSnapshot, saveLocalSnapshot, writeRemoteSnapshot } from './syncStore'
 import llanadaLogo from './assets/lllg-logo.png'
@@ -18,7 +18,6 @@ const normalizeStoredGender = (value) => {
   return normalizeGender(value)
 }
 const displayGender = (value) => GENDER_OPTIONS.find((option) => option.value === normalizeStoredGender(value))?.label || '—'
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 const matchesCamperQuery = (camper, query) => {
   const tokens = normalizeIdentity(query).split(' ').filter(Boolean)
   if (!tokens.length) return true
@@ -26,6 +25,28 @@ const matchesCamperQuery = (camper, query) => {
   return tokens.every((token) => searchable.includes(token))
 }
 const identityKey = ({ name = '', lastName = '', age = '', cabin = '' }, includeCabin = false) => [normalizeIdentity(name), normalizeIdentity(lastName), String(age).trim(), includeCabin ? normalizeIdentity(cabin) : ''].join('|')
+const SIDE_LABELS = { pares: 'Pares', impares: 'Impares' }
+const DEFAULT_SEASON_SETTINGS = {
+  tribeSides: TRIBES.map(({ side }) => side),
+  lockedAssignments: [],
+}
+const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right)
+const normalizeSeasonSettings = (settings, campers = []) => {
+  const validIds = new Set(campers.map(({ id }) => id))
+  const seen = new Set()
+  const lockedAssignments = (Array.isArray(settings?.lockedAssignments) ? settings.lockedAssignments : [])
+    .map((assignment) => ({ camperId: assignment.camperId, teamIndex: Number(assignment.teamIndex) }))
+    .filter((assignment) => assignment.camperId && (!validIds.size || validIds.has(assignment.camperId)) && Number.isInteger(assignment.teamIndex) && TRIBES[assignment.teamIndex])
+    .filter((assignment) => {
+      if (seen.has(assignment.camperId)) return false
+      seen.add(assignment.camperId)
+      return true
+    })
+  return {
+    tribeSides: TRIBES.map((tribe, index) => (['pares', 'impares'].includes(settings?.tribeSides?.[index]) ? settings.tribeSides[index] : tribe.side)),
+    lockedAssignments,
+  }
+}
 const programFilterTitle = (program) => ({
   bosque: 'Todos los Bosque',
   sabana: 'Todos los Sabana',
@@ -417,7 +438,49 @@ function ImportZone({ onImport }) {
   </div>
 }
 
-function Tryouts({ campers, setCampers, onGoTribes }) {
+function SeasonSettingsPanel({ campers, tribes, seasonSettings, onSetTribeSide, onSetLockedAssignment, onRemoveLockedAssignment }) {
+  const [fixedCamperId, setFixedCamperId] = useState('')
+  const [fixedTeamIndex, setFixedTeamIndex] = useState(0)
+  const [fixedQuery, setFixedQuery] = useState('')
+  const lockedByCamper = useMemo(() => new Map(seasonSettings.lockedAssignments.map((assignment) => [assignment.camperId, assignment])), [seasonSettings.lockedAssignments])
+  const camperOptions = useMemo(() => campers
+    .filter((camper) => matchesCamperQuery(camper, fixedQuery) || normalizeIdentity(camper.cabin).includes(normalizeIdentity(fixedQuery)))
+    .sort((a, b) => fullName(a).localeCompare(fullName(b), 'es', { sensitivity: 'base' })), [campers, fixedQuery])
+  const lockedRows = useMemo(() => seasonSettings.lockedAssignments
+    .map((assignment) => ({ assignment, camper: campers.find(({ id }) => id === assignment.camperId), team: tribes[assignment.teamIndex] }))
+    .filter(({ camper, team }) => camper && team)
+    .sort((a, b) => fullName(a.camper).localeCompare(fullName(b.camper), 'es', { sensitivity: 'base' })), [campers, tribes, seasonSettings.lockedAssignments])
+  const sideCounts = tribes.reduce((counts, tribe) => ({ ...counts, [tribe.side]: (counts[tribe.side] || 0) + 1 }), {})
+  const submitFixed = (event) => {
+    event.preventDefault()
+    if (!fixedCamperId) return
+    onSetLockedAssignment(fixedCamperId, fixedTeamIndex)
+    setFixedCamperId('')
+    setFixedQuery('')
+  }
+
+  return <section className="panel season-panel">
+    <div className="panel-header"><div><span className="eyebrow"><Settings2 size={14} /> Configuracion de temporada</span><h2>Reglas antes de distribuir</h2><p>Define que paises van con cabañas pares/impares y fija casos especiales sin tocar codigo.</p></div><div className="season-summary"><span>{sideCounts.pares || 0} pares</span><span>{sideCounts.impares || 0} impares</span><span>{lockedRows.length} fijos</span></div></div>
+    <div className="season-grid">
+      <div className="season-block">
+        <div className="season-block-heading"><strong>Tribus pares e impares</strong><small>Esta configuracion se usa cada vez que generas una distribucion.</small></div>
+        <div className="tribe-side-grid">{tribes.map((tribe, index) => <article className="tribe-side-card" key={tribe.name} style={{ '--tribe': tribe.color }}><FlagImage team={tribe} /><div><strong>{tribe.name}</strong><small>{SIDE_LABELS[tribe.side]}</small></div><div className="side-toggle" role="group" aria-label={`Lado de ${tribe.name}`}><button type="button" className={tribe.side === 'pares' ? 'active' : ''} onClick={() => onSetTribeSide(index, 'pares')}>Pares</button><button type="button" className={tribe.side === 'impares' ? 'active' : ''} onClick={() => onSetTribeSide(index, 'impares')}>Impares</button></div></article>)}</div>
+      </div>
+      <div className="season-block fixed-assignment-block">
+        <div className="season-block-heading"><strong>Campistas fijos</strong><small>Estos campistas quedan 100% en la tribu indicada al generar.</small></div>
+        <form className="fixed-assignment-form" onSubmit={submitFixed}>
+          <label className="field"><span>Buscar</span><input value={fixedQuery} onChange={(event) => setFixedQuery(event.target.value)} placeholder="Nombre, apellido o cabaña" /></label>
+          <label className="field"><span>Campista</span><select value={fixedCamperId} onChange={(event) => setFixedCamperId(event.target.value)}><option value="">Selecciona campista</option>{camperOptions.map((camper) => { const assignment = lockedByCamper.get(camper.id); return <option key={camper.id} value={camper.id}>{fullName(camper)} · {camper.age} años · {camper.cabin || '-'}{assignment ? ` · fijo en ${tribes[assignment.teamIndex]?.name || ''}` : ''}</option> })}</select></label>
+          <label className="field"><span>Tribu</span><select value={fixedTeamIndex} onChange={(event) => setFixedTeamIndex(Number(event.target.value))}>{tribes.map((tribe, index) => <option key={tribe.name} value={index}>{tribe.name}</option>)}</select></label>
+          <button className="button primary" type="submit" disabled={!fixedCamperId}><Pin size={17} /> Fijar</button>
+        </form>
+        <div className="fixed-assignment-list">{lockedRows.length ? lockedRows.map(({ assignment, camper, team }) => <div key={assignment.camperId}><span className="avatar">{initials(fullName(camper))}</span><div><strong>{fullName(camper)}</strong><small>{camper.age} años · {displayGender(camper.gender)} · Cabaña {camper.cabin || '-'}</small></div><span className="fixed-team"><FlagImage team={team} /> {team.name}</span><button type="button" className="icon-button" onClick={() => onRemoveLockedAssignment(assignment.camperId)} title="Quitar fijo"><Trash2 size={17} /></button></div>) : <div className="empty-mini">No hay campistas fijos todavia.</div>}</div>
+      </div>
+    </div>
+  </section>
+}
+
+function Tryouts({ campers, setCampers, onGoTribes, tribes, seasonSettings, onSetTribeSide, onSetLockedAssignment, onRemoveLockedAssignment }) {
   const [editing, setEditing] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -479,23 +542,7 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
     })
     return { added, updated, duplicates: duplicateDetails.length, duplicateDetails }
   }
-  const addDemo = () => setCampers(Array.from({ length: 300 }, (_, index) => {
-    const [fullDemoName] = DEMO_CAMPERS[index % DEMO_CAMPERS.length]
-    const [name, ...lastNameParts] = fullDemoName.split(' ')
-    return {
-      id: crypto.randomUUID(),
-      name,
-      lastName: lastNameParts.join(' '),
-      age: randomInt(6, 16),
-      gender: index % 2 === 0 ? 'female' : 'male',
-      cabin: CABIN_OPTIONS[index % CABIN_OPTIONS.length],
-      strength: randomInt(0, 5),
-      speed: randomInt(0, 5),
-      wit: randomInt(0, 5),
-      creativity: randomInt(0, 5),
-      leadership: randomInt(0, 5),
-    }
-  }))
+  const addDemo = () => setCampers(createDemoCampers())
   const deleteAll = () => {
     if (window.confirm('¿Seguro que quieres eliminar TODOS los registros de campistas? Esta acción también limpia la distribución actual de tribus.')) setCampers([])
   }
@@ -503,6 +550,7 @@ function Tryouts({ campers, setCampers, onGoTribes }) {
   return <>
     <section className="hero"><div><span className="eyebrow"><Sparkles size={14} /> Módulo de evaluación</span><h1>Conoce el talento de<br /><em>cada campista.</em></h1><p>Registra sus aptitudes para construir tribus más justas, diversas y equilibradas.</p></div><div className="hero-illustration" aria-hidden="true"><div className="sun" /><div className="mountain mountain-one" /><div className="mountain mountain-two" /><div className="flag">★</div><div className="trees">♠ ♠ ♠</div></div></section>
     <section className="stats-row"><article><span className="stat-icon green"><Users /></span><div><strong>{campers.length}</strong><small>Campistas registrados</small></div></article><article><span className="stat-icon gold"><BarChart3 /></span><div><strong>{campers.length ? (campers.reduce((total, camper) => total + camperAverage(camper), 0) / campers.length).toFixed(1) : '—'}</strong><small>Promedio de aptitudes</small></div></article><article><span className="stat-icon coral"><Trophy /></span><div><strong>16</strong><small>Tribus disponibles</small></div></article></section>
+    <SeasonSettingsPanel campers={campers} tribes={tribes} seasonSettings={seasonSettings} onSetTribeSide={onSetTribeSide} onSetLockedAssignment={onSetLockedAssignment} onRemoveLockedAssignment={onRemoveLockedAssignment} />
     <section className="panel roster-panel"><div className="panel-header"><div><span className="eyebrow">Base de campistas</span><h2>Participantes</h2><p>Administra las fichas antes de hacer la división.</p></div><div className="panel-actions">{campers.length > 0 && <button className="button danger-action" onClick={deleteAll}><Trash2 size={18} /> Eliminar todos</button>}<button className="button primary" onClick={() => { setEditing(null); setModalOpen(true) }}><Plus size={18} /> Agregar campista</button></div></div>
       <ImportZone onImport={importCampers} />
       <div className="preload-note"><strong>Flujo recomendado:</strong> primero sube la lista previa con Nombre, Apellido, Edad y Género (M/F). Después sube otro CSV con esos mismos datos y cabaña para actualizar aptitudes. Los duplicados se validan con nombre, apellido, edad y cabaña cuando esté disponible.</div>
@@ -576,18 +624,19 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [campers, setCampers] = useState(() => initialSnapshot.campers)
   const [assignments, setAssignments] = useState(() => reconcileAssignments(initialSnapshot.assignments, initialSnapshot.campers))
+  const [seasonSettings, setSeasonSettings] = useState(() => normalizeSeasonSettings(initialSnapshot.seasonSettings || DEFAULT_SEASON_SETTINGS, initialSnapshot.campers))
   const [syncStatus, setSyncStatus] = useState(() => isRemoteSyncConfigured() ? { mode: 'syncing', label: 'Conectando sync' } : { mode: 'local', label: 'Solo este dispositivo' })
-  const latestStateRef = useRef({ campers, assignments })
+  const latestStateRef = useRef({ campers, assignments, seasonSettings })
   const applyingRemoteRef = useRef(false)
   const syncReadyRef = useRef(false)
   const lastRemoteUpdateRef = useRef(null)
   const pendingRemoteSaveRef = useRef(false)
 
   useEffect(() => {
-    latestStateRef.current = { campers, assignments }
-    saveLocalSnapshot({ campers, assignments })
+    latestStateRef.current = { campers, assignments, seasonSettings }
+    saveLocalSnapshot({ campers, assignments, seasonSettings })
     if (isRemoteSyncConfigured() && syncReadyRef.current && !applyingRemoteRef.current) pendingRemoteSaveRef.current = true
-  }, [campers, assignments])
+  }, [campers, assignments, seasonSettings])
 
   useEffect(() => {
     if (!isRemoteSyncConfigured()) return undefined
@@ -600,6 +649,7 @@ export default function App() {
       pendingRemoteSaveRef.current = false
       setCampers(remoteCampers)
       setAssignments(reconcileAssignments(remote.assignments, remoteCampers))
+      if (remote.seasonSettings) setSeasonSettings(normalizeSeasonSettings(remote.seasonSettings, remoteCampers))
       window.setTimeout(() => { applyingRemoteRef.current = false }, 0)
     }
     const poll = async () => {
@@ -659,7 +709,7 @@ export default function App() {
     const timeout = window.setTimeout(async () => {
       setSyncStatus({ mode: 'syncing', label: 'Guardando sync' })
       try {
-        const saved = await writeRemoteSnapshot({ campers, assignments })
+        const saved = await writeRemoteSnapshot({ campers, assignments, seasonSettings })
         lastRemoteUpdateRef.current = saved?.updatedAt || lastRemoteUpdateRef.current
         pendingRemoteSaveRef.current = false
         setSyncStatus({ mode: 'online', label: 'Sincronizado' })
@@ -669,17 +719,39 @@ export default function App() {
       }
     }, 650)
     return () => window.clearTimeout(timeout)
-  }, [campers, assignments])
+  }, [campers, assignments, seasonSettings])
 
   const updateCampers = (updater) => {
     const next = typeof updater === 'function' ? updater(campers) : updater
     setCampers(next)
     setAssignments((current) => reconcileAssignments(current, next))
+    setSeasonSettings((current) => {
+      const normalized = normalizeSeasonSettings(current, next)
+      return sameJson(current, normalized) ? current : normalized
+    })
   }
   const camperMap = useMemo(() => new Map(campers.map((camper) => [camper.id, camper])), [campers])
-  const teams = useMemo(() => TRIBES.map((tribe, index) => ({ ...tribe, members: assignments ? (assignments[index] || []).map((id) => camperMap.get(id)).filter(Boolean) : [] })), [assignments, camperMap])
+  const configuredTribes = useMemo(() => TRIBES.map((tribe, index) => ({ ...tribe, side: seasonSettings.tribeSides[index] || tribe.side })), [seasonSettings.tribeSides])
+  const teams = useMemo(() => configuredTribes.map((tribe, index) => ({ ...tribe, members: assignments ? (assignments[index] || []).map((id) => camperMap.get(id)).filter(Boolean) : [] })), [assignments, camperMap, configuredTribes])
   const average = useMemo(() => campers.length ? campers.reduce((total, camper) => total + camperAverage(camper), 0) / campers.length : 0, [campers])
-  const generate = () => setAssignments(balanceCampers(campers).map((team) => team.members.map(({ id }) => id)))
+  const generate = () => setAssignments(balanceCampers(campers, { tribes: configuredTribes, lockedAssignments: seasonSettings.lockedAssignments }).map((team) => team.members.map(({ id }) => id)))
+  const setTribeSide = (teamIndex, side) => {
+    if (!configuredTribes[teamIndex] || !['pares', 'impares'].includes(side)) return
+    setSeasonSettings((current) => normalizeSeasonSettings({ ...current, tribeSides: current.tribeSides.map((value, index) => index === teamIndex ? side : value) }, campers))
+    setAssignments(null)
+  }
+  const setLockedAssignment = (camperId, teamIndex) => {
+    if (!campers.some(({ id }) => id === camperId) || !configuredTribes[teamIndex]) return
+    setSeasonSettings((current) => normalizeSeasonSettings({
+      ...current,
+      lockedAssignments: [...current.lockedAssignments.filter((assignment) => assignment.camperId !== camperId), { camperId, teamIndex }],
+    }, campers))
+    setAssignments(null)
+  }
+  const removeLockedAssignment = (camperId) => {
+    setSeasonSettings((current) => normalizeSeasonSettings({ ...current, lockedAssignments: current.lockedAssignments.filter((assignment) => assignment.camperId !== camperId) }, campers))
+    setAssignments(null)
+  }
   const move = (memberId, sourceIndex, targetIndex) => {
     if (sourceIndex === targetIndex) return
     setAssignments((current) => current.map((ids, index) => index === sourceIndex ? ids.filter((id) => id !== memberId) : index === targetIndex ? [...ids, memberId] : ids))
@@ -689,9 +761,15 @@ export default function App() {
     const newCamper = { ...camper, id }
     setCampers((items) => [...items, newCamper])
     setAssignments((current) => {
-      const base = TRIBES.map((_, index) => Array.isArray(current?.[index]) ? current[index] : [])
+      const base = configuredTribes.map((_, index) => Array.isArray(current?.[index]) ? current[index] : [])
       return base.map((ids, index) => index === teamIndex ? [...ids, id] : ids)
     })
   }
-  return <div className="app-shell"><header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><span className={`sync-pill ${syncStatus.mode}`} title={syncStatus.detail || (isRemoteSyncConfigured() ? 'Sincronización entre dispositivos activa si Supabase está configurado.' : 'Configura Supabase para compartir los datos entre dispositivos.')}><i />{syncStatus.label}</span><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header><main>{active === 'tryouts' ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} /> : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} onAddCamper={addCamperToTeam} />}</main><footer><span className="brand footer-brand"><Brand footer /></span><p></p><small>{isRemoteSyncConfigured() ? 'Los datos se sincronizan entre dispositivos y también quedan respaldados localmente.' : 'Modo local: configura Supabase para sincronizar datos entre dispositivos.'}</small></footer></div>
+  return <div className="app-shell">
+    <header><button className="brand" onClick={() => setActive('tryouts')}><Brand /></button><nav className={menuOpen ? 'open' : ''}><button className={active === 'tryouts' ? 'active' : ''} onClick={() => { setActive('tryouts'); setMenuOpen(false) }}><UserPlus size={17} /> Tryouts</button><button className={active === 'tribes' ? 'active' : ''} onClick={() => { setActive('tribes'); setMenuOpen(false) }}><LayoutGrid size={17} /> Tribus</button></nav><span className={`sync-pill ${syncStatus.mode}`} title={syncStatus.detail || (isRemoteSyncConfigured() ? 'Sincronización entre dispositivos activa si Supabase está configurado.' : 'Configura Supabase para compartir los datos entre dispositivos.')}><i />{syncStatus.label}</span><div className="header-status"><span>{campers.length}</span><div><strong>Campistas</strong><small>{average ? `${average.toFixed(1)} prom.` : 'Sin evaluar'}</small></div></div><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></header>
+    <main>{active === 'tryouts'
+      ? <Tryouts campers={campers} setCampers={updateCampers} onGoTribes={() => setActive('tribes')} tribes={configuredTribes} seasonSettings={seasonSettings} onSetTribeSide={setTribeSide} onSetLockedAssignment={setLockedAssignment} onRemoveLockedAssignment={removeLockedAssignment} />
+      : <Tribes campers={campers} teams={teams} generated={Boolean(assignments)} onGenerate={generate} onMove={move} onAddCamper={addCamperToTeam} />}</main>
+    <footer><span className="brand footer-brand"><Brand footer /></span><p></p><small>{isRemoteSyncConfigured() ? 'Los datos se sincronizan entre dispositivos y también quedan respaldados localmente.' : 'Modo local: configura Supabase para sincronizar datos entre dispositivos.'}</small></footer>
+  </div>
 }

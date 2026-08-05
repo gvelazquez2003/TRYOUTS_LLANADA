@@ -1,9 +1,9 @@
 export const SKILLS = [
-  { key: 'strength', label: 'Fuerza', icon: '💪' },
-  { key: 'speed', label: 'Velocidad', icon: '⚡' },
-  { key: 'wit', label: 'Inteligencia', icon: '🧠' },
-  { key: 'creativity', label: 'Creatividad', icon: '✨' },
-  { key: 'leadership', label: 'Liderazgo', icon: '🏅' },
+  { key: 'strength', label: 'Fuerza', icon: 'F' },
+  { key: 'speed', label: 'Velocidad', icon: 'V' },
+  { key: 'wit', label: 'Inteligencia', icon: 'I' },
+  { key: 'creativity', label: 'Creatividad', icon: 'C' },
+  { key: 'leadership', label: 'Liderazgo', icon: 'L' },
 ]
 
 export const GENDER_OPTIONS = [
@@ -23,7 +23,7 @@ export function normalizeGender(value) {
 }
 
 export function genderLabel(value) {
-  return GENDER_OPTIONS.find((option) => option.value === value)?.label || '—'
+  return GENDER_OPTIONS.find((option) => option.value === value)?.label || '-'
 }
 
 // Pesos de balance definidos para el contexto del campamento.
@@ -41,51 +41,96 @@ export const BALANCE_DIMENSIONS = [
 export const TRIBES = [
   ['Alemania', 'de', '#2d3648', 'impares'], ['Francia', 'fr', '#3155a4', 'impares'],
   ['Holanda', 'nl', '#e56b35', 'impares'], ['Portugal', 'pt', '#167a53', 'pares'],
-  ['Colombia', 'co', '#d4a91c', 'pares'], ['México', 'mx', '#1f875d', 'pares'],
-  ['Noruega', 'no', '#c33b4e', 'pares'], ['Bélgica', 'be', '#d9a827', 'pares'],
+  ['Colombia', 'co', '#d4a91c', 'pares'], ['Mexico', 'mx', '#1f875d', 'pares'],
+  ['Noruega', 'no', '#c33b4e', 'pares'], ['Belgica', 'be', '#d9a827', 'pares'],
   ['Argentina', 'ar', '#53a7c7', 'impares'], ['Brasil', 'br', '#30934b', 'impares'],
-  ['Japón', 'jp', '#d64b5c', 'impares'], ['Inglaterra', 'gb-eng', '#a83f47', 'pares'],
-  ['Estados Unidos', 'us', '#3c5a96', 'impares'], ['España', 'es', '#c9473b', 'pares'],
-  ['Canadá', 'ca', '#d44848', 'impares'], ['Uruguay', 'uy', '#428ebd', 'pares'],
+  ['Japon', 'jp', '#d64b5c', 'impares'], ['Inglaterra', 'gb-eng', '#a83f47', 'pares'],
+  ['Estados Unidos', 'us', '#3c5a96', 'impares'], ['Espana', 'es', '#c9473b', 'pares'],
+  ['Canada', 'ca', '#d44848', 'impares'], ['Uruguay', 'uy', '#428ebd', 'pares'],
 ].map(([name, flagCode, color, side]) => ({ name, flagCode, flagUrl: `https://flagcdn.com/w80/${flagCode}.png`, color, side }))
 
-export const LOCKED_TRIBE_ASSIGNMENTS = [
-  { fullName: 'Bernardo Aranguren', age: 13, cabin: 'S14', tribe: 'Inglaterra' },
-  { fullName: 'Alberto Bernoti', age: 14, cabin: 'AV 2', tribe: 'Inglaterra' },
-  { fullName: 'Ronald Morrison', age: 9, cabin: 'B12', tribe: 'Inglaterra' },
-  { fullName: 'Antonieta Requena', age: 16, cabin: 'CIT 4', tribe: 'España' },
-  { fullName: 'Oscar Castro', age: 8, cabin: 'B10', tribe: 'España' },
-  { fullName: 'Feliciano Palacios', age: 9, cabin: 'B10', tribe: 'España' },
-  { fullName: 'Sebastian Aranguren', age: 14, cabin: 'AV 4', tribe: 'Noruega' },
-  { fullName: 'Juan Marquez', age: 10, cabin: 'B12', tribe: 'Noruega' },
-  { fullName: 'Nicolas Godayol', age: 13, cabin: 'S14', tribe: 'Portugal' },
-  { fullName: 'Geronimo Baptista', age: 14, cabin: 'AV 2', tribe: 'Portugal' },
-  { fullName: 'Anabella Mendez', age: 14, cabin: 'AV 2', tribe: 'Portugal' },
-  { fullName: 'Emiliana Morrison', age: 13, cabin: 'S1', tribe: 'Francia' },
-  { fullName: 'Luisana Inciarte', age: 12, cabin: 'S3', tribe: 'Francia' },
-  { fullName: 'Ana Sofia Castro', age: 10, cabin: 'B3', tribe: 'Brasil' },
-  { fullName: 'Jimena Valdes', age: 10, cabin: 'B1', tribe: 'Brasil' },
-  { fullName: 'Mathias Becks', age: 13, cabin: 'AV 5', tribe: 'Alemania' },
-  { fullName: 'Diego Bonilla', age: 13, cabin: 'AV 1', tribe: 'Alemania' },
-  { fullName: 'Elena Aguilar', age: 12, cabin: 'S5', tribe: 'Canadá' },
-  { fullName: 'Cristina Requena', age: 12, cabin: 'S3', tribe: 'Canadá' },
+const FEMALE_BASE_NAMES = [
+  'Sofia', 'Valentina', 'Isabella', 'Camila', 'Mariana', 'Luciana', 'Antonella', 'Victoria', 'Sara', 'Renata',
+  'Julieta', 'Amanda', 'Elena', 'Paula', 'Clara', 'Gabriela', 'Daniela', 'Andrea', 'Martina', 'Emilia',
+  'Catalina', 'Josefina', 'Carolina', 'Natalia', 'Manuela', 'Alejandra', 'Lucia', 'Emma', 'Abril', 'Bianca',
+  'Alana', 'Ariana', 'Micaela', 'Regina', 'Salome', 'Isadora', 'Maia', 'Celeste', 'Allison', 'Miranda',
+  'Fiorella', 'Violeta', 'Rebeca', 'Adriana', 'Barbara', 'Cecilia', 'Diana', 'Estefania', 'Fabiana', 'Jimena',
+  'Laura', 'Lorena', 'Maite', 'Noelia', 'Patricia', 'Rafaela', 'Teresa', 'Veronica', 'Ximena', 'Zoe',
 ]
 
-export const DEMO_CAMPERS = [
-  ['Sofía Herrera', 12, 3, 5, 4, 5, 4], ['Mateo Rojas', 13, 5, 4, 3, 2, 4],
-  ['Valentina Cruz', 11, 2, 4, 5, 5, 3], ['Santiago León', 14, 4, 3, 4, 3, 5],
-  ['Isabella Mora', 12, 3, 5, 3, 4, 4], ['Sebastián Díaz', 10, 5, 4, 2, 3, 3],
-  ['Camila Torres', 13, 2, 3, 5, 5, 4], ['Nicolás Vega', 15, 4, 4, 4, 2, 5],
-  ['Mariana Ruiz', 11, 3, 4, 4, 5, 3], ['Samuel Castro', 12, 5, 5, 2, 2, 4],
-  ['Luciana Pérez', 14, 2, 3, 5, 4, 5], ['Daniel Gómez', 13, 4, 5, 3, 3, 3],
-  ['Antonella Silva', 10, 3, 4, 4, 5, 2], ['Gabriel Núñez', 15, 5, 3, 3, 2, 5],
-  ['Emma Vargas', 12, 2, 5, 4, 4, 4], ['Thiago Mendoza', 11, 4, 4, 3, 3, 3],
-  ['Victoria Soto', 13, 3, 3, 5, 5, 4], ['Lucas Romero', 14, 5, 4, 2, 3, 4],
-  ['Sara Navarro', 10, 2, 5, 4, 5, 3], ['Martín Acosta', 15, 4, 3, 4, 2, 5],
-  ['Renata Campos', 12, 3, 4, 5, 4, 3], ['Emiliano Reyes', 13, 5, 5, 2, 2, 4],
-  ['Julieta Molina', 11, 2, 3, 5, 5, 5], ['Joaquín Salas', 14, 4, 5, 3, 3, 3],
-  ['Amanda Fuentes', 12, 3, 4, 4, 5, 4], ['Benjamín Ortiz', 10, 5, 4, 2, 3, 2],
-  ['Elena Cabrera', 15, 2, 3, 5, 4, 5], ['Tomás Pineda', 13, 4, 5, 3, 2, 4],
-  ['Paula Ibarra', 11, 3, 4, 4, 5, 3], ['Diego Arias', 14, 5, 3, 3, 3, 5],
-  ['Clara Márquez', 12, 2, 5, 5, 4, 4], ['Alejandro Gil', 13, 4, 4, 2, 3, 3],
+const MALE_BASE_NAMES = [
+  'Mateo', 'Santiago', 'Sebastian', 'Nicolas', 'Samuel', 'Daniel', 'Gabriel', 'Thiago', 'Lucas', 'Martin',
+  'Emiliano', 'Joaquin', 'Benjamin', 'Tomas', 'Diego', 'Alejandro', 'Leonardo', 'Andres', 'Miguel', 'David',
+  'Adrian', 'Bruno', 'Carlos', 'Cristobal', 'Eduardo', 'Felipe', 'Gael', 'Hector', 'Ignacio', 'Javier',
+  'Kevin', 'Lorenzo', 'Manuel', 'Pablo', 'Rafael', 'Rodrigo', 'Simon', 'Valentino', 'Yago', 'Agustin',
+  'Alonso', 'Bautista', 'Camilo', 'Dario', 'Elias', 'Fernando', 'Guillermo', 'Ian', 'Ivan', 'Jeremias',
+  'Julian', 'Leon', 'Matias', 'Maximiliano', 'Oscar', 'Patricio', 'Ricardo', 'Salvador', 'Vicente', 'Xavier',
 ]
+
+const SECOND_NAMES = [
+  'Adriana', 'Alessandra', 'Amelia', 'Anabella', 'Aurora', 'Beatriz', 'Carla', 'Constanza', 'Cristina', 'Delfina',
+  'Fernanda', 'Francisca', 'Ines', 'Ivanna', 'Jose', 'Lara', 'Luisa', 'Mercedes', 'Milagros', 'Pilar',
+  'Alberto', 'Antonio', 'Arturo', 'Emilio', 'Enrique', 'Esteban', 'Francisco', 'Gerardo', 'Hugo', 'Jose',
+  'Luis', 'Marco', 'Mauricio', 'Ramiro', 'Sergio', 'Teo', 'Alfredo', 'Cesar', 'Ruben', 'Saul',
+]
+
+const LAST_NAMES = [
+  'Herrera', 'Romero', 'Gonzalez', 'Ortega', 'Ruiz', 'Ortiz', 'Moreno', 'Contreras', 'Soto', 'Vargas',
+  'Mendoza', 'Rojas', 'Castillo', 'Pereira', 'Navarro', 'Acosta', 'Campos', 'Reyes', 'Fuentes', 'Cabrera',
+  'Arias', 'Marquez', 'Leon', 'Cruz', 'Mora', 'Diaz', 'Vega', 'Castro', 'Perez', 'Gomez',
+  'Nunez', 'Silva', 'Molina', 'Salas', 'Ibarra', 'Gil', 'Torres', 'Flores', 'Pineda', 'Escobar',
+  'Parra', 'Rangel', 'Villalobos', 'Quintero', 'Montes', 'Valera', 'Cardenas', 'Ferrer', 'Urbina', 'Baptista',
+  'Aguilar', 'Aguirre', 'Alvarado', 'Andrade', 'Bello', 'Benitez', 'Blanco', 'Bravo', 'Calderon', 'Camacho',
+  'Carrillo', 'Chacin', 'Correa', 'Delgado', 'Espinoza', 'Figueroa', 'Galindo', 'Guerra', 'Lara', 'Linares',
+  'Lopez', 'Machado', 'Medina', 'Mejia', 'Montilla', 'Ochoa', 'Olivares', 'Palacios', 'Peinado', 'Ponce',
+  'Prieto', 'Pulido', 'Ramirez', 'Rendon', 'Rivas', 'Rosales', 'Saavedra', 'Sanchez', 'Suarez', 'Tovar',
+]
+
+const PROGRAM_DISTRIBUTION = [
+  { total: 100, cabins: Array.from({ length: 12 }, (_, index) => `B${index + 1}`), ages: [7, 8, 9, 10] },
+  { total: 110, cabins: Array.from({ length: 16 }, (_, index) => `S${index + 1}`), ages: [11, 12, 13] },
+  { total: 50, cabins: Array.from({ length: 6 }, (_, index) => `AV ${index + 1}`), ages: [13, 14, 15] },
+  { total: 40, cabins: Array.from({ length: 6 }, (_, index) => `CIT ${index + 1}`), ages: [15, 16, 17] },
+]
+
+function clampScore(value) {
+  return Math.max(0, Math.min(5, value))
+}
+
+function givenName(gender, index) {
+  const names = gender === 'female' ? FEMALE_BASE_NAMES : MALE_BASE_NAMES
+  if (index < names.length) return names[index]
+  const second = SECOND_NAMES[(index * 7 + (gender === 'female' ? 3 : 11)) % SECOND_NAMES.length]
+  return `${names[index % names.length]} ${second}`
+}
+
+function skillScore(globalIndex, age, skillIndex, programIndex) {
+  const base = 2 + ((globalIndex * 17 + age * 5 + skillIndex * 11) % 4)
+  const programBoost = [
+    [0, 1, 0, 1, 0],
+    [0, 0, 1, 1, 1],
+    [1, 1, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+  ][programIndex][skillIndex]
+  const correction = (globalIndex + skillIndex) % 13 === 0 ? -2 : (globalIndex + age + skillIndex) % 17 === 0 ? 1 : 0
+  return clampScore(base + programBoost + correction)
+}
+
+export function createDemoCampers(createId = () => crypto.randomUUID()) {
+  const genderCounters = { female: 0, male: 0 }
+  const rows = []
+  PROGRAM_DISTRIBUTION.forEach((program, programIndex) => {
+    for (let index = 0; index < program.total; index += 1) {
+      const globalIndex = rows.length
+      const gender = (globalIndex + programIndex + Math.floor(index / 5)) % 2 === 0 ? 'female' : 'male'
+      const name = givenName(gender, genderCounters[gender])
+      genderCounters[gender] += 1
+      const lastName = LAST_NAMES[(globalIndex * 13 + programIndex * 7) % LAST_NAMES.length]
+      const age = program.ages[(index + Math.floor(index / program.cabins.length)) % program.ages.length]
+      const cabin = program.cabins[index % program.cabins.length]
+      const [strength, speed, wit, creativity, leadership] = SKILLS.map((_, skillIndex) => skillScore(globalIndex, age, skillIndex, programIndex))
+      rows.push({ id: createId(), name, lastName, age, gender, cabin, strength, speed, wit, creativity, leadership })
+    }
+  })
+  return rows
+}
