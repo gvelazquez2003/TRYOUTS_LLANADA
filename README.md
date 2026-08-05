@@ -8,6 +8,8 @@ Desde la tabla se pueden eliminar todos los campistas de una sola vez. Después 
 
 En Tryouts tambien se configura cada temporada: que paises pertenecen a pares/impares y que campistas deben quedar fijos en una tribu antes de generar la distribucion. Esas reglas se guardan en el navegador y, si Supabase tiene la columna `season_settings`, tambien se sincronizan entre dispositivos.
 
+Despues de generar tribus, los movimientos manuales pueden hacerse como intercambio compensado: al mover un campista a otra tribu, la app devuelve automaticamente a un campista no fijo de la tribu destino hacia la tribu original y muestra un aviso con ambos cambios. Si no existe un candidato no fijo, hace el movimiento simple y avisa que no pudo compensar.
+
 También puedes pre-cargar campistas antes del campamento usando solo `Nombre`, `Apellido` y `Edad`. Luego, al subir un CSV con cabaña y aptitudes, la app busca cada niño por `Nombre + Apellido + Edad` si todavía no tiene cabaña y actualiza esa ficha en vez de crear un duplicado.
 
 Los nombres, apellidos y cabañas aceptan caracteres en español como `Ñ` y tildes. La carga de CSV intenta leer correctamente archivos UTF-8 y Windows-1252/ANSI.

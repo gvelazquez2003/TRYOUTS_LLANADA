@@ -166,6 +166,19 @@ header { height: 82px; }
 .member-preview .mini-avatar[draggable="true"]:active { cursor: grabbing; }
 .customize-hint { margin: -5px 0 17px; padding: 11px 13px; display: flex; gap: 9px; align-items: center; border-radius: 11px; color: #557067; background: #e8f1e5; font-size: 12px; }
 .customize-hint svg { color: #3b795c; flex: 0 0 auto; }
+.reciprocal-hint { justify-content: space-between; flex-wrap: wrap; }
+.reciprocal-hint > span { flex: 1 1 360px; }
+.reciprocal-hint button { min-height: 36px; border: 1px solid #cbdace; border-radius: 999px; background: #fff; color: var(--green); padding: 8px 11px; display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 900; }
+.reciprocal-hint button.active { background: var(--green); border-color: var(--green); color: #fff; }
+.reciprocal-hint button.active svg { color: #fff; }
+.move-notice { margin: -7px 0 17px; border: 1px solid #d8ddd5; border-radius: 12px; background: #fff; padding: 12px 13px; display: flex; align-items: flex-start; gap: 10px; color: #53675f; }
+.move-notice.success { background: #e8f3e9; border-color: #c6ddcb; color: #285b42; }
+.move-notice.warning { background: #fff6e1; border-color: #ead29b; color: #78581d; }
+.move-notice.info { background: #eef3f5; border-color: #d4dee1; color: #536872; }
+.move-notice > div { display: grid; gap: 3px; flex: 1; }
+.move-notice strong { color: currentColor; font-size: 13px; }
+.move-notice span { font-size: 12px; line-height: 1.45; }
+.move-notice button { border: 0; background: transparent; color: currentColor; padding: 2px; }
 .tribe-filter-bar { margin: -6px 0 18px; padding: 12px; border: 1px solid #dedfd8; border-radius: 14px; background: #fff; display: flex; align-items: center; gap: 12px; }
 .tribe-filter-bar .search { flex: 1 1 320px; min-width: 220px; }
 .tribe-filter-bar > span { color: #7b8983; font-size: 12px; white-space: nowrap; }
@@ -223,6 +236,9 @@ header { height: 82px; }
   .fixed-assignment-list > div { align-items: flex-start; flex-wrap: wrap; }
   .fixed-team { margin-left: 43px; }
   .tribe-filter-bar { align-items: flex-start; flex-direction: column; }
+  .reciprocal-hint { align-items: flex-start; }
+  .reciprocal-hint button { width: 100%; justify-content: center; }
+  .move-notice { align-items: flex-start; }
   .tribe-filter-bar .search { flex-basis: auto; width: 100%; }
   .tribe-filter-bar > span { white-space: normal; }
   .cabin-export-bar { align-items: stretch; flex-direction: column; }
